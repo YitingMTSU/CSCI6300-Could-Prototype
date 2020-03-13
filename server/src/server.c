@@ -6,12 +6,8 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include "server.h"
 
-#define BUFFER_SIZE 1024
-#define PORT 3303
-#define SERVER_IP "192.168.122.1"
-
-int checkUser(char* userName);
 
 int main() {
 
@@ -23,8 +19,9 @@ int main() {
   struct sockaddr_in newAddr;
 
   socklen_t addr_size;
-  char buffer[BUFFER_SIZE];
-
+  char buffer[BUFFER_LEN];
+  memset(&buffer, '\0', sizeof(buffer));
+  
   if ((sockfd = socket(PF_INET, SOCK_STREAM, 0)) == 0) {
     perror("socket failed");
     exit(EXIT_FAILURE);
@@ -66,22 +63,11 @@ int main() {
     exit(EXIT_FAILURE);
   }
 
-  memset(&buffer, '\0', sizeof(buffer));
-  char* interfaceWelcome = "Welcome To Ranger/Herschel Cloud!";
-  char* interfaceUser = "Please enter your username:";
-  char* interfacePassword = "Passport:";
-  char* interfaceUsage = "Enter The Option You Want: \n1. Read Own File      2. Rewrite Own File\n 3. Read Others' Files 4. EXIT";
-
-  send(newSocket,interfaceWelcome,strlen(interfaceWelcome),0);
-  send(newSocket,interfaceUser,strlen(interfaceUser),0);
-  read(newSocket,buffer,1024);
-  char* userName;
-  strcpy(userName,buffer);
-  memset(&buffer, '\0', sizeof(buffer));
-  int userIn = checkUser(userName);
+  login(newSocket,buffer);
+ 
   while (1) {
     
-    read(newSocket,buffer,1024);
+    read(newSocket,buffer,BUFFER_LEN);
     printf("%s\n",buffer);
     strcpy(buffer, "Hello");
     send(newSocket, buffer, strlen(buffer), 0);
@@ -91,6 +77,109 @@ int main() {
   return 0;
 }
 
-int checkUser(char* userName) {
-  return 1;
+int checkUser(char* userName, char* password) {
+  FILE* fp;
+  char userNameInFile[USERNAME_LEN];
+  char passwordInFile[PASSWORD_LEN];
+  char* filename = "/nfshome/yw3c/CSCI6430/CSCI6300-Could-Prototype/server/data/userAccount/userInfo.txt";
+  fp = fopen(filename,"r");
+
+  if (fp == NULL) {
+    printf("Could not open file %s\n",filename);
+    return 0;
+  }
+
+  while (!feof(fp)) {
+    fscanf(fp, "%s %s[\n]", userNameInFile,passwordInFile);
+    //printf("UserName:%s ",userNameInFile);
+    //printf("Password:%s\n",passwordInFile);
+    //printf("UserName: %s UserNameInFile: %s\n",userName,userNameInFile);
+    //printf("len: [%ld %ld]",strlen(userName),strlen(userNameInFile));
+    if (strcmp(userName,userNameInFile) == 0) {
+      strcpy(password,passwordInFile);
+      return 1;
+    }
+    memset(userNameInFile,0,USERNAME_LEN);
+    memset(passwordInFile,0,PASSWORD_LEN);
+  }
+  //printf("out of the loop\n");
+  return 0;
+}
+
+
+int login(int socket, char* buffer) {
+  send(socket,interfaceWelcome,strlen(interfaceWelcome),0);
+  send(socket,interfaceUser,strlen(interfaceUser),0);
+  
+  //get user name
+  read(socket,buffer,BUFFER_LEN);
+  printf("UserName:%s\n",buffer);
+  char passwordInFile[PASSWORD_LEN];
+  int userCheck = checkUser(buffer, passwordInFile);
+  memset(buffer, 0, strlen(buffer));
+  printf("userCheck: %d\n",userCheck);
+  if (userCheck == 0) {
+    char userExist = '0';
+    send(socket,&userExist,sizeof(userExist),0);
+    send(socket,interfaceNewUser,strlen(interfaceNewUser),0);
+    char option;
+    recv(socket, &option, sizeof(option),0);
+    if (option == '2') { //quit the connection
+      send(socket, interfaceBye, strlen(interfaceBye), 0);
+      exit(1);
+    } else { //create the account and enter password
+      
+      send(socket, interfacePassword, strlen(interfacePassword), 0);
+      char passwordFirst[PASSWORD_LEN];
+      //receive the first password
+      recv(socket, buffer, BUFFER_LEN, 0);
+      //printf("after\n");
+      strcpy(passwordFirst,buffer);
+      printf("The first password:%s\n",passwordFirst);
+      memset(buffer, 0, strlen(buffer));
+      send(socket, interfaceReEnterPassword, strlen(interfaceReEnterPassword), 0);
+      char passwordSecond[PASSWORD_LEN];
+      recv(socket, buffer, BUFFER_LEN, 0);
+      strcpy(passwordSecond, buffer);
+      printf("The second password:%s\n",passwordSecond);
+      memset(buffer, 0, strlen(buffer));
+      if (strcmp(passwordFirst, passwordSecond) == 0) {
+	char create = '1';
+	send(socket, &create, sizeof(create), 0);
+	return 1;
+      } else {
+	char create = '0';
+	send(socket, &create, sizeof(create), 0);
+	exit(1);
+      }
+            
+    }      
+    //memset(&buffer, '\0', sizeof(buffer));
+  } else {
+    char userExist = '1';
+    send(socket,&userExist,sizeof(userExist),0);
+    send(socket, interfacePassword, strlen(interfacePassword), 0);
+    //memset(&buffer, '\0', sizeof(buffer));
+    
+    recv(socket, buffer, BUFFER_LEN, 0);//receive password
+
+    //printf("the password: %s\n %s\n", buffer, passwordInFile);
+    if (strcmp(buffer, passwordInFile) == 0) {
+      char pass = '1';
+      send(socket, &pass, sizeof(pass), 0);
+      return 1;
+    } else {
+      char pass = '0';
+      send(socket, &pass, sizeof(pass), 0);
+      send(socket, interfacePasswordError, strlen(interfacePasswordError), 0);
+      exit(1);
+    }
+    
+  }
+  return 0;
+}
+
+
+void wirteNewUserToFile(char* userName, char* password) {
+  
 }
