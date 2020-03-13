@@ -5,11 +5,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
-#define BUFFER_LEN 1024
-#define PORT 3303
-//#define SERVER_IP "192.168.122.1"
-#define SERVER_IP "161.45.162.78"
+#include "client.h" //the client header file
 
 int main() {
 
