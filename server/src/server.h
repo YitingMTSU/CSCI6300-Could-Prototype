@@ -7,7 +7,9 @@
 #define SERVER_RANGER_IP "161.XX.XX.XXX"
 #define USERNAME_LEN 20
 #define PASSWORD_LEN 50
-
+#define ACCOUNT_PATH "/nfshome/yw3c/CSCI6430/CSCI6300-Could-Prototype/server/data/userAccount/userInfo.txt"
+#define DATA_PATH "/nfshome/yw3c/CSCI6430/CSCI6300-Could-Prototyp\
+e/server/data/userData"
 
 const char* interfaceWelcome = "Welcome To Ranger/Herschel Cloud!";
 const char* interfaceUser = "Please enter your username:";
@@ -26,6 +28,9 @@ int login(int socket, char* buffer);
 //check if the user exit inside
 int checkUser(char* userName, char* password);
 
+
+//write the new user infomation to accountInfo.txt file and creat new data file
+void writeNewUserToFile(char* userName, char* password);
 
 #endif
 

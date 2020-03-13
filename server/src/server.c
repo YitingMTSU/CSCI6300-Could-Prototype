@@ -81,7 +81,7 @@ int checkUser(char* userName, char* password) {
   FILE* fp;
   char userNameInFile[USERNAME_LEN];
   char passwordInFile[PASSWORD_LEN];
-  char* filename = "/nfshome/yw3c/CSCI6430/CSCI6300-Could-Prototype/server/data/userAccount/userInfo.txt";
+  char* filename = ACCOUNT_PATH;
   fp = fopen(filename,"r");
 
   if (fp == NULL) {
@@ -97,12 +97,14 @@ int checkUser(char* userName, char* password) {
     //printf("len: [%ld %ld]",strlen(userName),strlen(userNameInFile));
     if (strcmp(userName,userNameInFile) == 0) {
       strcpy(password,passwordInFile);
+      fclose(fp);
       return 1;
     }
     memset(userNameInFile,0,USERNAME_LEN);
     memset(passwordInFile,0,PASSWORD_LEN);
   }
   //printf("out of the loop\n");
+  fclose(fp);
   return 0;
 }
 
@@ -115,6 +117,8 @@ int login(int socket, char* buffer) {
   read(socket,buffer,BUFFER_LEN);
   printf("UserName:%s\n",buffer);
   char passwordInFile[PASSWORD_LEN];
+  char userName[USERNAME_LEN];
+  strcpy(userName, buffer);
   int userCheck = checkUser(buffer, passwordInFile);
   memset(buffer, 0, strlen(buffer));
   printf("userCheck: %d\n",userCheck);
@@ -146,6 +150,7 @@ int login(int socket, char* buffer) {
       if (strcmp(passwordFirst, passwordSecond) == 0) {
 	char create = '1';
 	send(socket, &create, sizeof(create), 0);
+	writeNewUserToFile(userName,passwordFirst);
 	return 1;
       } else {
 	char create = '0';
@@ -180,6 +185,20 @@ int login(int socket, char* buffer) {
 }
 
 
-void wirteNewUserToFile(char* userName, char* password) {
+void writeNewUserToFile(char* userName, char* password) {
+  FILE *fp;
+  char *path = ACCOUNT_PATH;
+  fp = fopen(path,"a");
+
+  fprintf(fp, "%s %s\n",userName,password);
+  
+  fclose(fp);
+
+  char* userDataPath;
+  sprintf(userDataPath, "%s/%sData.txt", DATA_PATH, userName);
+  fp = fopen(userDataPath, "w");
+  fprintf(fp, "Hello, this is %s's file\n",userName);
+  fclose(fp);
+
   
 }
