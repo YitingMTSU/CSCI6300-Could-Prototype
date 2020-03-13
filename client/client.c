@@ -16,13 +16,12 @@ int main() {
   int clientSocket;
   struct sockaddr_in serverAddr;
   char buffer[BUFFER_LEN];
-
+  memset(&buffer, '\0', sizeof(buffer));
+  
   if ((clientSocket = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
     printf("\n Socket creation error \n");
     return -1;
   }
-
-  memset(&buffer, '\0', sizeof(buffer));
 
   serverAddr.sin_family = AF_INET;
   serverAddr.sin_port = htons(PORT);
@@ -37,11 +36,23 @@ int main() {
     printf("\nConnection Failed \n");
   }
 
-
-  char *hello = "Hello from client";
-  send(clientSocket, hello, strlen(hello), 0);
-  printf("Hello message sent\n");
+  //receive the welcome and input user interface
   recv(clientSocket, buffer, BUFFER_LEN, 0);
-  printf("The data rev : %s\n", buffer);
-  
+  printf("%s\n",buffer);
+  memset(&buffer, '\0', sizeof(buffer));
+  recv(clientSocket, buffer, BUFFER_LEN, 0);
+  printf("%s\n",buffer);
+  memset(&buffer, '\0', sizeof(buffer));
+  char* userName;
+  //gets(userName);
+
+  while (1) {
+    char *hello = "Hello from client";
+    send(clientSocket, hello, strlen(hello), 0);
+    printf("Hello message sent\n");
+    recv(clientSocket, buffer, BUFFER_LEN, 0);
+    printf("The data rev : %s\n", buffer);
+    break;
+  }
+  return 0;
 }
