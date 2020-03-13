@@ -193,11 +193,24 @@ void writeNewUserToFile(char* userName, char* password) {
   fprintf(fp, "%s %s\n",userName,password);
   
   fclose(fp);
+  //printf("append the info file!\n");
+  
+  char userDataPath[300];
+  memset(userDataPath, 0, 300);
+  strcat(userDataPath, DATA_PATH);
+  strcat(userDataPath, "/");
+  strcat(userDataPath, userName);
+  strcat(userDataPath, "Data.txt");
 
-  char* userDataPath;
-  sprintf(userDataPath, "%s/%sData.txt", DATA_PATH, userName);
+  //printf("userDataPath: %s\n",userDataPath);
   fp = fopen(userDataPath, "w");
-  fprintf(fp, "Hello, this is %s's file\n",userName);
+  char content[50];
+  memset(content, 0, 50);
+  strcat(content, "Hello, this is ");
+  strcat(content, userName);
+  strcat(content, "'s file\n");
+  //printf("content: %s\n",content);
+  fputs(content,fp);
   fclose(fp);
 
   
