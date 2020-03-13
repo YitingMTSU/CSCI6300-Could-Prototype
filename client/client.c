@@ -52,37 +52,112 @@ int main() {
 
 
 int login(int socket, char* buffer) {
+  //read the interface from server
   recv(socket, buffer, BUFFER_LEN, 0);
   printf("%s\n",buffer);
-  memset(&buffer, '\0', sizeof(buffer));
-  recv(socket, buffer, BUFFER_LEN, 0);
-  printf("%s\n",buffer);
-  memset(&buffer, '\0', sizeof(buffer));
+  memset(buffer, 0, BUFFER_LEN);
+  read(socket, buffer, BUFFER_LEN);
+  printf("%s",buffer);
+  memset(buffer, 0, BUFFER_LEN);
 
   //get user name
   char userName[USERNAME_LEN];
-  memset(&userName,'\0',sizeof(userName));
-  int count = 0;
+  memset(userName,0,USERNAME_LEN);
+  //int count = 0;
   fgets(userName,USERNAME_LEN,stdin);
+  userName[strlen(userName)-1] = 0; //otherwise \n at the end
   send(socket,userName,strlen(userName),0);
 
-  int flag;
-  recv(socket,buffer,BUFFER_LEN,0);
-  flag = buffer[0] - '0';
-  memset(&buffer, '\0', sizeof(buffer));
+
+  //check the account if exist
+  char userExist;
+  recv(socket,&userExist,sizeof(userExist),0);
+  printf("userExist: %c\n",userExist);
+  //memset(&buffer, '0', sizeof(buffer));
 
   
-  if (flag == 0) { //didn't find the user
+  if (userExist == '0') { //didn't find the user
     recv(socket,buffer,BUFFER_LEN,0);
     printf("%s\n",buffer);
+    memset(buffer, 0, BUFFER_LEN);
+    char option; //select option create interface or quit
+    echo(false);
+    char input[5];
+    fgets(input,5,stdin);
+    option = input[0];
+    //printf("The option you choose %c\n",option);
+    send(socket, &option, sizeof(option), 0);
+    if (option == '1') { //create the account and enter the password
+      //printf("here");
+      //receive the first password
+      echo(true);
+      //printf("bfeore receive buffer %s\n",buffer);
+      recv(socket, buffer, BUFFER_LEN, 0);
+      printf("%s ",buffer);
+      memset(buffer, 0, BUFFER_LEN);
+      char passwordFirst[PASSWORD_LEN];
+      memset(passwordFirst, 0, PASSWORD_LEN);
+      echo(false);
+      fgets(passwordFirst,PASSWORD_LEN,stdin);
+      passwordFirst[strlen(passwordFirst) - 1] = 0;
+      echo(true);
+      send(socket, passwordFirst, strlen(passwordFirst), 0);
+      printf("\n");
+
+      
+      //receive the second password
+      recv(socket, buffer, BUFFER_LEN, 0);
+      printf("%s\n", buffer);
+      memset(buffer,0,BUFFER_LEN);
+      char passwordSecond[PASSWORD_LEN];
+      memset(passwordSecond, 0, PASSWORD_LEN);
+      echo(false);
+      fgets(passwordSecond,PASSWORD_LEN,stdin);
+      passwordSecond[strlen(passwordSecond) - 1] = 0;
+      echo(true);
+      send(socket, passwordSecond, strlen(passwordSecond), 0);
+
+      char create;
+      recv(socket, &create, sizeof(create), 0);
+      if (create == '0') { //create unsucessful
+	printf("The password doesn't match. Exit.\n");
+	exit(1);
+      } else { //create sucessful
+	printf("Create the new account: %s\n",userName);
+	return 1;
+      }
+      
+      
+    } else {
+      echo(true);
+      recv(socket, buffer, BUFFER_LEN, 0);
+      printf("%s\n",buffer);
+      memset(buffer, 0, BUFFER_LEN);
+      exit(1);//select quit
+    }
   } else { //find the user, next input the password
+    recv(socket, buffer, BUFFER_LEN, 0);
+    printf("%s\n", buffer);
+    memset(buffer, 0, BUFFER_LEN);
+    
     echo(false);
     char password[PASSWORD_LEN];
     fgets(password,PASSWORD_LEN,stdin);
+    password[strlen(password)-1] = '\0';
     echo(true);
     send(socket,password,strlen(password),0);
-    recv(socket,buffer,BUFFER_LEN,0);
-    int pass = buffer[0] - '0';
+
+    char pass;
+    recv(socket, &pass, sizeof(pass), 0);
+    
+    if (pass == '0') {
+      recv(socket,buffer,BUFFER_LEN,0);
+      printf("%s\n",buffer);
+      memset(buffer, 0, strlen(buffer));
+      exit(1);
+    } else {
+      return 1;
+    }
     
   }
   return 0;
