@@ -11,6 +11,8 @@
 #define PORT 3303
 #define SERVER_IP "192.168.122.1"
 
+int checkUser(char* userName);
+
 int main() {
 
   int sockfd, newSocket;
@@ -58,7 +60,6 @@ int main() {
   }
 
   addr_size = sizeof(newAddr);
-
   if ((newSocket = accept(sockfd, (struct sockaddr*)& newAddr,
 			  &addr_size)) < 0) {
     perror("accept");
@@ -66,10 +67,30 @@ int main() {
   }
 
   memset(&buffer, '\0', sizeof(buffer));
+  char* interfaceWelcome = "Welcome To Ranger/Herschel Cloud!";
+  char* interfaceUser = "Please enter your username:";
+  char* interfacePassword = "Passport:";
+  char* interfaceUsage = "Enter The Option You Want: \n1. Read Own File      2. Rewrite Own File\n 3. Read Others' Files 4. EXIT";
+
+  send(newSocket,interfaceWelcome,strlen(interfaceWelcome),0);
+  send(newSocket,interfaceUser,strlen(interfaceUser),0);
   read(newSocket,buffer,1024);
-  printf("%s\n",buffer);
-  strcpy(buffer, "Hello");
-  send(newSocket, buffer, strlen(buffer), 0);
-  printf("Hello sent\n");
+  char* userName;
+  strcpy(userName,buffer);
+  memset(&buffer, '\0', sizeof(buffer));
+  int userIn = checkUser(userName);
+  while (1) {
+    
+    read(newSocket,buffer,1024);
+    printf("%s\n",buffer);
+    strcpy(buffer, "Hello");
+    send(newSocket, buffer, strlen(buffer), 0);
+    printf("Hello sent\n");
+    break;
+  }
   return 0;
+}
+
+int checkUser(char* userName) {
+  return 1;
 }
