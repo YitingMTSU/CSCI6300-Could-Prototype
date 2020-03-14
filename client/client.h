@@ -14,8 +14,11 @@
 //log into the account
 int login(int socket, char* buffer);
 
+//show echo or not
 void echo(bool on);
 
+//enter into the main menu client side
+int mainUsageClient(int socket, char* buffer);
 
 
 

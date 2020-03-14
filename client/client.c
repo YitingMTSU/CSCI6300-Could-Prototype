@@ -14,7 +14,7 @@ int main() {
   int clientSocket;
   struct sockaddr_in serverAddr;
   char buffer[BUFFER_LEN];
-  memset(&buffer, '\0', sizeof(buffer));
+  memset(buffer, 0, sizeof(buffer));
   
   if ((clientSocket = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
     printf("\n Socket creation error \n");
@@ -36,15 +36,11 @@ int main() {
 
   //login into the server
   int logInS = login(clientSocket,buffer);
-
+  memset(buffer, 0, strlen(buffer));
+  
   while (logInS) {
-    char *hello = "Hello from client";
-    send(clientSocket, hello, strlen(hello), 0);
-    printf("Hello message sent\n");
-    recv(clientSocket, buffer, BUFFER_LEN, 0);
-    printf("The data rev : %s\n", buffer);
-    free(hello);
-    break;
+    int quit = mainUsageClient(clientSocket, buffer);
+    if (quit == 1) break;
   }
 
   return 0;
@@ -53,11 +49,15 @@ int main() {
 
 int login(int socket, char* buffer) {
   //read the interface from server
+  //int sig;
   recv(socket, buffer, BUFFER_LEN, 0);
   printf("%s\n",buffer);
   memset(buffer, 0, BUFFER_LEN);
-  read(socket, buffer, BUFFER_LEN);
+  //printf("\nrecv sig: %d\n",sig);
+
+  recv(socket, buffer, BUFFER_LEN, 0);
   printf("%s",buffer);
+  //printf("\nrecv sig: %d\n",sig);
   memset(buffer, 0, BUFFER_LEN);
 
   //get user name
@@ -136,6 +136,8 @@ int login(int socket, char* buffer) {
       exit(1);//select quit
     }
   } else { //find the user, next input the password
+    int count = 1;
+  INPUTPASSWORD:
     recv(socket, buffer, BUFFER_LEN, 0);
     printf("%s\n", buffer);
     memset(buffer, 0, BUFFER_LEN);
@@ -154,6 +156,9 @@ int login(int socket, char* buffer) {
       recv(socket,buffer,BUFFER_LEN,0);
       printf("%s\n",buffer);
       memset(buffer, 0, strlen(buffer));
+      if(count == 3) exit(1);
+      count++;
+      goto INPUTPASSWORD;
       exit(1);
     } else {
       return 1;
@@ -171,4 +176,8 @@ void echo(bool on) {
     ? (settings.c_lflag |   ECHO)
     : (settings.c_lflag & ~(ECHO));
   tcsetattr( STDIN_FILENO, TCSANOW, &settings);
+}
+
+int mainUsageClient(int socket, char* buffer){
+  return 1;
 }
