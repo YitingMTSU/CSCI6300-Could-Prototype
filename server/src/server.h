@@ -28,9 +28,12 @@ int login(int socket, char* buffer);
 //check if the user exit inside
 int checkUser(char* userName, char* password);
 
-
 //write the new user infomation to accountInfo.txt file and creat new data file
 void writeNewUserToFile(char* userName, char* password);
+
+//enter into the main menu server side
+int mainUsageServer(int socket, char* buffer);
+
 
 #endif
 

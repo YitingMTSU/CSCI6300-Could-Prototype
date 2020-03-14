@@ -6,7 +6,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include "server.h"
+#include "server.h" //the server header file
 
 
 int main() {
@@ -20,14 +20,14 @@ int main() {
 
   socklen_t addr_size;
   char buffer[BUFFER_LEN];
-  memset(&buffer, '\0', sizeof(buffer));
+  memset(&buffer, 0, sizeof(buffer));
   
   if ((sockfd = socket(PF_INET, SOCK_STREAM, 0)) == 0) {
     perror("socket failed");
     exit(EXIT_FAILURE);
   }
 
-  memset(&serverAddr, '\0', sizeof(serverAddr));
+  memset(&serverAddr, 0, sizeof(serverAddr));
 
 
   // Forcefully attaching socket to the port 3303 
@@ -55,25 +55,34 @@ int main() {
     perror("listen");
     exit(EXIT_FAILURE);
   }
-
   addr_size = sizeof(newAddr);
-  if ((newSocket = accept(sockfd, (struct sockaddr*)& newAddr,
-			  &addr_size)) < 0) {
-    perror("accept");
-    exit(EXIT_FAILURE);
-  }
 
-  login(newSocket,buffer);
- 
+  int pid;
+  //start accept the connection
   while (1) {
+    if ((newSocket = accept(sockfd, (struct sockaddr*)& newAddr,
+			    &addr_size)) < 0) {
+      perror("accept");
+      exit(EXIT_FAILURE);
+    }
+    printf("Connection accepted from %s Port:%d\n",
+	   inet_ntoa(newAddr.sin_addr), ntohs(newAddr.sin_port));
+
+    pid = fork();
+    if (pid == 0) {
+      close(sockfd);
+      int logInS = login(newSocket,buffer);
+      memset(buffer, 0, strlen(buffer));
+      
+      while (logInS) {
+	int quit = mainUsageServer(newSocket, buffer);
+	if (quit == 1) break;
+      }//end while
+    } else { //parent process
+      close(newSocket);
+    }//end if
+  }//end while
     
-    read(newSocket,buffer,BUFFER_LEN);
-    printf("%s\n",buffer);
-    strcpy(buffer, "Hello");
-    send(newSocket, buffer, strlen(buffer), 0);
-    printf("Hello sent\n");
-    break;
-  }
   return 0;
 }
 
@@ -111,10 +120,11 @@ int checkUser(char* userName, char* password) {
 
 int login(int socket, char* buffer) {
   send(socket,interfaceWelcome,strlen(interfaceWelcome),0);
+  sleep(0.5);
   send(socket,interfaceUser,strlen(interfaceUser),0);
-  
+  printf("waiting for user name...\n");
   //get user name
-  read(socket,buffer,BUFFER_LEN);
+  recv(socket,buffer,BUFFER_LEN,0);
   printf("UserName:%s\n",buffer);
   char passwordInFile[PASSWORD_LEN];
   char userName[USERNAME_LEN];
@@ -125,6 +135,7 @@ int login(int socket, char* buffer) {
   if (userCheck == 0) {
     char userExist = '0';
     send(socket,&userExist,sizeof(userExist),0);
+    //sleep(0.5);
     send(socket,interfaceNewUser,strlen(interfaceNewUser),0);
     char option;
     recv(socket, &option, sizeof(option),0);
@@ -163,6 +174,9 @@ int login(int socket, char* buffer) {
   } else {
     char userExist = '1';
     send(socket,&userExist,sizeof(userExist),0);
+    const int tryTimes = 3;
+    int count = 1;
+  COMPAREPASSWORD:
     send(socket, interfacePassword, strlen(interfacePassword), 0);
     //memset(&buffer, '\0', sizeof(buffer));
     
@@ -176,8 +190,16 @@ int login(int socket, char* buffer) {
     } else {
       char pass = '0';
       send(socket, &pass, sizeof(pass), 0);
-      send(socket, interfacePasswordError, strlen(interfacePasswordError), 0);
-      exit(1);
+      if (count == tryTimes) {
+	send(socket, interfacePasswordError, strlen(interfacePasswordError), 0);
+	close(socket);
+	return 0;
+      } else {
+	send(socket, interfacePasswordError, strlen(interfacePasswordError), 0);
+	sleep(1);
+	count++;
+	goto COMPAREPASSWORD;
+      }
     }
     
   }
@@ -214,4 +236,8 @@ void writeNewUserToFile(char* userName, char* password) {
   fclose(fp);
 
   
+}
+
+int mainUsageServer(int socket, char* buffer){
+  return 1;
 }
