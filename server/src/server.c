@@ -119,11 +119,18 @@ int checkUser(char* userName, char* password) {
 
 
 int login(int socket, char* buffer) {
+  //sleep(1);
+  //int messageLen = strlen(interfaceWelcome);
+  //send(socket, &messageLen, sizeof(messageLen),0);
   send(socket,interfaceWelcome,strlen(interfaceWelcome),0);
-  sleep(0.5);
+
+  //sleep(10);
+  //messageLen = strlen(interfaceUser);
+  //send(socket, &messageLen, sizeof(messageLen),0);
   send(socket,interfaceUser,strlen(interfaceUser),0);
   printf("waiting for user name...\n");
   //get user name
+  sleep(1);
   recv(socket,buffer,BUFFER_LEN,0);
   printf("UserName:%s\n",buffer);
   char passwordInFile[PASSWORD_LEN];
