@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <dirent.h>
 #include "server.h" //the server header file
 
 
@@ -71,11 +72,12 @@ int main() {
     pid = fork();
     if (pid == 0) {
       close(sockfd);
-      int logInS = login(newSocket,buffer);
+      char userName[USERNAME_LEN]; 
+      int logInS = login(newSocket,buffer,userName);
       memset(buffer, 0, strlen(buffer));
       
       while (logInS) {
-	int quit = mainUsageServer(newSocket, buffer);
+	int quit = mainUsageServer(newSocket, buffer,userName);
 	if (quit == 1) break;
       }//end while
     } else { //parent process
@@ -118,7 +120,7 @@ int checkUser(char* userName, char* password) {
 }
 
 
-int login(int socket, char* buffer) {
+int login(int socket, char* buffer, char* userName) {
   //sleep(1);
   //int messageLen = strlen(interfaceWelcome);
   //send(socket, &messageLen, sizeof(messageLen),0);
@@ -132,13 +134,13 @@ int login(int socket, char* buffer) {
   //get user name
   sleep(1);
   recv(socket,buffer,BUFFER_LEN,0);
-  printf("UserName:%s\n",buffer);
+  //printf("UserName:%s\n",buffer);
   char passwordInFile[PASSWORD_LEN];
-  char userName[USERNAME_LEN];
+  //char userName[USERNAME_LEN];
   strcpy(userName, buffer);
   int userCheck = checkUser(buffer, passwordInFile);
   memset(buffer, 0, strlen(buffer));
-  printf("userCheck: %d\n",userCheck);
+  //printf("userCheck: %d\n",userCheck);
   if (userCheck == 0) {
     char userExist = '0';
     send(socket,&userExist,sizeof(userExist),0);
@@ -157,13 +159,13 @@ int login(int socket, char* buffer) {
       recv(socket, buffer, BUFFER_LEN, 0);
       //printf("after\n");
       strcpy(passwordFirst,buffer);
-      printf("The first password:%s\n",passwordFirst);
+      //printf("The first password:%s\n",passwordFirst);
       memset(buffer, 0, strlen(buffer));
       send(socket, interfaceReEnterPassword, strlen(interfaceReEnterPassword), 0);
       char passwordSecond[PASSWORD_LEN];
       recv(socket, buffer, BUFFER_LEN, 0);
       strcpy(passwordSecond, buffer);
-      printf("The second password:%s\n",passwordSecond);
+      //printf("The second password:%s\n",passwordSecond);
       memset(buffer, 0, strlen(buffer));
       if (strcmp(passwordFirst, passwordSecond) == 0) {
 	char create = '1';
@@ -227,7 +229,6 @@ void writeNewUserToFile(char* userName, char* password) {
   char userDataPath[300];
   memset(userDataPath, 0, 300);
   strcat(userDataPath, DATA_PATH);
-  strcat(userDataPath, "/");
   strcat(userDataPath, userName);
   strcat(userDataPath, "Data.txt");
 
@@ -245,6 +246,131 @@ void writeNewUserToFile(char* userName, char* password) {
   
 }
 
-int mainUsageServer(int socket, char* buffer){
+int mainUsageServer(int socket, char* buffer, char* userName){
+  send(socket, interfaceUsage, strlen(interfaceUsage), 0);
+  printf("usage sent\n");
+  sleep(1);
+  send(socket, interfaceOption, strlen(interfaceOption), 0);
+  printf("option sent\n");
+  char option;
+  recv(socket,&option,sizeof(option),0);
+  printf("option : %c\n",option);
+
+  char* filename;
+  int find;
+  switch (option) {
+    case '1':
+      //send the list of files
+      showFiles(socket,buffer);
+
+      //get the file name the user want to read
+      recv(socket,buffer,BUFFER_LEN,0);
+      printf("The file %s\n",buffer);
+      //strcpy(filename,buffer);
+      //bzero(buffer,BUFFER_LEN);
+      sendFileInfor(socket,buffer);
+      //return back to main interface
+      printf("come back!\n");
+      mainUsageServer(socket,buffer,userName);
+      break;
+    case '2':
+      break;
+    case '3':
+      break;
+    case '4':
+      send(socket,interfaceBye,strlen(interfaceBye),0);
+      return 1;
+      break;
+    default:
+      return 1;
+  }
+  return 1;
+}
+
+
+void readFile(char* filename, char* buffer){
+
+  FILE* fp;
+  fp = fopen(filename,"r");
+  
+  int strLen = 50;
+  char str[strLen];
+  while (fgets(str,strLen,fp) != NULL) {
+    strcat(buffer,str);
+  }
+  fclose(fp);
+  //printf("%s\n",buffer);
+  
+}
+
+void showFiles(int socket, char* buffer){
+  struct dirent *de;
+  DIR *dr = opendir(DATA_PATH);
+
+  if (dr == NULL) {
+    printf("Could not open curent directory\n");
+    exit(1);
+  }
+  
+  int count = 1;
+  // for readdir()
+  while ((de = readdir(dr)) != NULL) {
+    if(strcmp(de->d_name,"..")==0) break;
+    char str[FILE_LEN];
+    //memset(str,0,FILE_LEN);
+    sprintf(str,"%d. %s\n", count,de->d_name);
+    strcat(buffer,str);
+    count++;
+  }
+
+  closedir(dr);
+  //printf("files:%s\n",buffer);
+  send(socket,buffer,BUFFER_LEN,0);
+  bzero(buffer,BUFFER_LEN);
+}
+
+
+int sendFileInfor(int socket, char* filename) {
+  struct dirent *de;
+  DIR *dr = opendir(DATA_PATH);
+
+  if (dr == NULL) {
+    printf("Could not open curent directory\n");
+    exit(1);
+  }
+
+  int find = 0;
+  // for readdir()
+  while ((de = readdir(dr)) != NULL) {
+    if(strcmp(de->d_name,"..") == 0) break;
+    if (strcmp(de->d_name,filename) == 0) {
+      find = 1;
+      break;
+    }
+  }
+
+  closedir(dr);
+  send(socket,&find,sizeof(find),0);
+  if (find == 0) {//didn't find the file
+    printf("didn't find the file\n");
+    bzero(filename,strlen(filename));
+    return -1;
+  } else {//find the file, send the information
+    printf("find the file\n");
+    char filenameToRead[BUFFER_LEN];
+    memset(filenameToRead,0,strlen(filenameToRead));
+    //printf("file path:%s\n",filenameToRead);
+    strcat(filenameToRead, DATA_PATH);
+    //printf("file path:%s\n",filenameToRead);
+    strcat(filenameToRead, filename);
+    char buffer[BUFFER_LEN];
+    memset(buffer,0,BUFFER_LEN);
+    //printf("file path:%s\n",filenameToRead);
+    readFile(filenameToRead,buffer);
+    printf("send content: %s\n",buffer);
+    send(socket,buffer,strlen(buffer),0);
+    bzero(filename,strlen(filename));
+    sleep(1);
+  }
   return 1;
 }
