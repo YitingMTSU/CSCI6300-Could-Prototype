@@ -10,6 +10,10 @@
 #define SERVER_RANGER_IP "161.45.162.71"
 #define USERNAME_LEN 20
 #define PASSWORD_LEN 50
+#define FILE_LEN 300
+
+const char* interfaceFiles = "The following are the files:";
+const char* interfaceChooseFile = "Choose your File";
 
 //log into the account
 int login(int socket, char* buffer);

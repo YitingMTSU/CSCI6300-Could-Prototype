@@ -20,16 +20,20 @@ int main() {
  SERVERCHOOSE:
   printf("Which Server you want to connect? 1. HERSCHEL OR 2. RANGER\n");
   printf("Type 1 OR 2: ");
-  char serverOption = getchar();
-  char* serverIP;
+  char serverOption;
+  char input[5];
+  fgets(input,5,stdin);
+  serverOption = input[0];
+  int serverIP;
   if (serverOption == '1') {
-    strcpy(serverIP,SERVER_HERSCHEL_IP);
+    serverIP = 1;
   } else if (serverOption == '2') {
-    strcpy(serverIP,SERVER_RANGER_IP);
+    serverIP = 2;
   } else {
     printf("Cannot reconginze, choose again!\n");
     goto SERVERCHOOSE;
   }
+  
   
   if ((clientSocket = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
     printf("\n Socket creation error \n");
@@ -41,12 +45,21 @@ int main() {
   serverAddr.sin_port = htons(PORT);
 
   //Convert IPv4 and IPv6 address from text to binary form
-  if (inet_pton(AF_INET, serverIP, &serverAddr.sin_addr) <= 0) {
-    printf("\nInvalid address/ Address not supported \n");
-    return -1;
+  if (serverIP == 1) {
+    if (inet_pton(AF_INET, SERVER_HERSCHEL_IP, &serverAddr.sin_addr) <= 0){
+      printf("\nInvalid address/ Address not supported \n");
+      return -1;
+    }
+    printf("[+]Convert the HERSCHEL IP...\n");
+  } else {
+    if (inet_pton(AF_INET, SERVER_RANGER_IP, &serverAddr.sin_addr) <= 0){
+      printf("\nInvalid address/ Address not supported \n");
+      return -1;
+    }
+    printf("[+]Convert the RANGER IP...\n");    
   }
-  printf("[+]Convert the IP...\n");
 
+  
   if (connect(clientSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
     printf("\nConnection Failed \n");
   }
@@ -94,7 +107,7 @@ int login(int socket, char* buffer) {
   //check the account if exist
   char userExist;
   recv(socket,&userExist,sizeof(userExist),0);
-  printf("userExist: %c\n",userExist);
+  //printf("userExist: %c\n",userExist);
   //memset(&buffer, '0', sizeof(buffer));
 
   
@@ -201,5 +214,69 @@ void echo(bool on) {
 }
 
 int mainUsageClient(int socket, char* buffer){
+  recv(socket, buffer, BUFFER_LEN, 0);
+  printf("%s\n",buffer);
+  bzero(buffer,BUFFER_LEN);
+  recv(socket, buffer, BUFFER_LEN, 0);
+  printf("%s",buffer);
+  char input[5];
+  char option;
+ RECHOOSE:
+  fgets(input,5,stdin);
+  option = input[0];
+  if (option - '1' < 0 || option - '1' > 3) {
+    printf("Error input!");
+    printf("%s",buffer);
+    goto RECHOOSE;
+  }
+  bzero(buffer,BUFFER_LEN);
+  send(socket,&option,sizeof(option),0);
+
+  char filename[FILE_LEN];
+  int find;
+  switch (option) {
+    case '1':
+      //receive the list of files
+      printf("%s\n",interfaceFiles);
+      recv(socket,buffer,BUFFER_LEN,0);
+      printf("%s",buffer);
+      bzero(buffer,BUFFER_LEN);
+
+      //get the file want to read
+      printf("%s to read: ",interfaceChooseFile);
+      fgets(filename,FILE_LEN,stdin);
+      filename[strlen(filename)-1] = '\0';
+
+      //send the file name
+      send(socket,filename,strlen(filename),0);
+
+      //recv the information from the file
+      recv(socket,&find,sizeof(find),0);
+      if (find == 1) { //find the file, print the information
+	recv(socket,buffer,BUFFER_LEN,0);
+	printf("%s:\n%s\n\n",filename,buffer);
+	bzero(buffer,BUFFER_LEN);
+	sleep(1);
+	mainUsageClient(socket,buffer);
+      } else { //didn't find the file, return back to interface
+	printf("The file didn't exist!\n");
+	
+	mainUsageClient(socket,buffer);
+      }
+      break;
+    case '2':
+      break;
+    case '3':
+      break;
+    case '4':
+      recv(socket,buffer,BUFFER_LEN,0);
+      printf("%s\n",buffer);
+      bzero(buffer,BUFFER_LEN);
+      exit(1);
+      break;
+    default:
+      return 1;
+  }
+  
   return 1;
 }
