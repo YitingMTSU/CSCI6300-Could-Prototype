@@ -482,3 +482,91 @@ void createDeleteFile(int socket, char* filename) {
   
   return;
 }
+
+void combineWriteFile(char* filename) {
+  FILE *fin,*fout;
+  char writeFilePath[FILE_LEN];
+  memset(writeFilePath,0,FILE_LEN);
+
+  //get the path of write file
+  strcat(writeFilePath,DATA_PATH);
+  strcat(writeFilePath,WRITE);
+  strcat(writeFilePath,filename);
+
+  char dataFile[FILE_LEN];
+  memset(dataFile,0,FILE_LEN);
+
+  //get the path of data file
+  strcat(dataFile,DATA_PATH);
+  strcat(dataFile,filename);
+
+  fin = fopen(writeFilePath,"r");
+  fout = fopen(dataFile,"a");
+
+  char line[BUFFER_LEN];
+  bzero(line,BUFFER_LEN);
+  while (fgets(line,sizeof(line),fin)) {
+    printf("%s",line);
+    fprintf(fout,"%s",line);
+    bzero(line,strlen(line));
+  }
+
+  fclose(fin);
+  fclose(fout);
+
+  //delete the file
+  remove(writeFilePath); 
+}
+
+void combineDeleteFile(char* filename) {
+  FILE *fin,*fout,*fnew;
+  char fileDelPath[FILE_LEN];
+  bzero(fileDelPath,FILE_LEN);
+
+  //get the path of delete file
+  strcat(fileDelPath,DATA_PATH);
+  strcat(fileDelPath,DELETE);
+  strcat(fileDelPath,filename);
+
+  fin = fopen(fileDelPath,"r");
+  char lineDel[BUFFER_LEN];
+  bzero(lineDel,BUFFER_LEN);
+  while (fgets(lineDel,sizeof(lineDel),fin)) {
+    printf("%s",lineDel);
+  }
+
+  //get the path of original data
+  char fileOriPath[FILE_LEN];
+  bzero(fileOriPath,FILE_LEN);
+  strcat(fileOriPath,DATA_PATH);
+  strcat(fileOriPath,filename);
+
+  fout = fopen(fileOriPath,"r");
+  
+  //get the path of tmp data file
+  char fileTmpPath[FILE_LEN];
+  bzero(fileTmpPath,FILE_LEN);
+  strcat(fileTmpPath,DATA_PATH);
+  strcat(fileTmpPath,"Tmp");
+  strcat(fileTmpPath,filename);
+
+  fnew = fopen(fileTmpPath,"a");
+
+  char lineKeep[BUFFER_LEN];
+  bzero(lineKeep,BUFFER_LEN);
+  while (fgets(lineKeep,sizeof(lineKeep),fout)) {
+    if (strcmp(lineDel,lineKeep) == 0) {
+      continue;
+    }
+    fprintf(fnew,"%s",lineKeep);
+  }
+
+  fclose(fin);
+  fclose(fout);
+  fclose(fnew);
+
+  remove(fileDelPath);
+  remove(fileOriPath);
+  rename(fileTmpPath,fileOriPath);
+}
+				    
