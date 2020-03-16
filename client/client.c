@@ -225,7 +225,7 @@ int mainUsageClient(int socket, char* buffer){
   fgets(input,5,stdin);
   option = input[0];
   if (option - '1' < 0 || option - '1' > 3) {
-    printf("Error input!");
+    printf("Error input!\n");
     printf("%s",buffer);
     goto RECHOOSE;
   }
@@ -235,47 +235,126 @@ int mainUsageClient(int socket, char* buffer){
   char filename[FILE_LEN];
   int find;
   switch (option) {
-    case '1':
-      //receive the list of files
-      printf("%s\n",interfaceFiles);
+  case '1': //read file
+    //receive the list of files
+    printf("%s\n",interfaceFiles);
+    recv(socket,buffer,BUFFER_LEN,0);
+    printf("%s",buffer);
+    bzero(buffer,BUFFER_LEN);
+    
+    //get the file want to read
+    printf("%s to read: ",interfaceChooseFile);
+    fgets(filename,FILE_LEN,stdin);
+    filename[strlen(filename)-1] = '\0';
+
+    //send the file name
+    printf("filename:%s\n",filename);
+    send(socket,filename,strlen(filename),0);
+    
+    //recv the information from the file
+    recv(socket,&find,sizeof(find),0);
+    if (find == 1) { //find the file, print the information
       recv(socket,buffer,BUFFER_LEN,0);
-      printf("%s",buffer);
+      printf("%s:\n%s\n\n",filename,buffer);
+      bzero(buffer,BUFFER_LEN);
+      sleep(1);
+      mainUsageClient(socket,buffer);
+    } else { //didn't find the file, return back to interface
+      printf("The file didn't exist!\n");
+      
+      mainUsageClient(socket,buffer);
+    }
+    break;
+  case '2': //write information
+    //receive the list of files
+    printf("%s\n",interfaceFiles);
+    recv(socket,buffer,BUFFER_LEN,0);
+    printf("%s",buffer);
+    bzero(buffer,BUFFER_LEN);
+
+    //get the file want to write
+    printf("%s to write: ",interfaceChooseFile);
+    fgets(filename,FILE_LEN,stdin);
+    filename[strlen(filename)-1] = '\0';
+
+    //send the file name the user want to write
+    send(socket,filename,strlen(filename),0);
+
+    //recv the information from the file
+    recv(socket,&find,sizeof(find),0);
+    if (find == 1) { //find the file, print the information
+      //read the information of file
+      recv(socket,buffer,BUFFER_LEN,0);
+      printf("%s:\n%s\n\n",filename,buffer);
       bzero(buffer,BUFFER_LEN);
 
-      //get the file want to read
-      printf("%s to read: ",interfaceChooseFile);
-      fgets(filename,FILE_LEN,stdin);
-      filename[strlen(filename)-1] = '\0';
+      //get the new information you want to wirte
+      printf("Enter the information you want to write:\n");
+      fgets(buffer,BUFFER_LEN,stdin);
 
-      //send the file name
-      send(socket,filename,strlen(filename),0);
-
-      //recv the information from the file
-      recv(socket,&find,sizeof(find),0);
-      if (find == 1) { //find the file, print the information
-	recv(socket,buffer,BUFFER_LEN,0);
-	printf("%s:\n%s\n\n",filename,buffer);
-	bzero(buffer,BUFFER_LEN);
-	sleep(1);
-	mainUsageClient(socket,buffer);
-      } else { //didn't find the file, return back to interface
-	printf("The file didn't exist!\n");
-	
-	mainUsageClient(socket,buffer);
-      }
-      break;
-    case '2':
-      break;
-    case '3':
-      break;
-    case '4':
-      recv(socket,buffer,BUFFER_LEN,0);
-      printf("%s\n",buffer);
+      //send information
+      send(socket,buffer,strlen(buffer),0);
+      printf("[+]New information to write sent.\n");
       bzero(buffer,BUFFER_LEN);
-      exit(1);
-      break;
-    default:
-      return 1;
+      
+      sleep(1);
+      mainUsageClient(socket,buffer);
+    } else { //didn't find the file, return back to interface
+      printf("The file didn't exist!\n");
+
+      mainUsageClient(socket,buffer);
+    }
+
+    break;
+  case '3': //delete information
+    //receive the list of files
+    printf("%s\n",interfaceFiles);
+    recv(socket,buffer,BUFFER_LEN,0);
+    printf("%s",buffer);
+    bzero(buffer,BUFFER_LEN);
+
+    //get the file want to delete information
+    printf("%s to write: ",interfaceChooseFile);
+    fgets(filename,FILE_LEN,stdin);
+    filename[strlen(filename)-1] = '\0';
+
+    //send the file name the user want to delete information
+    send(socket,filename,strlen(filename),0);
+
+    //recv the information from the file
+    recv(socket,&find,sizeof(find),0);
+    if (find == 1) { //find the file, print the information
+      //read the information of file
+      recv(socket,buffer,BUFFER_LEN,0);
+      printf("%s:\n%s\n\n",filename,buffer);
+      bzero(buffer,BUFFER_LEN);
+
+      //get the new information you want to delete
+      printf("Enter the information you want to write:\n");
+      fgets(buffer,BUFFER_LEN,stdin);
+
+      //send information
+      send(socket,buffer,strlen(buffer),0);
+      printf("[+]Information to delete sent.\n");
+      bzero(buffer,strlen(buffer));
+
+      sleep(1);
+      mainUsageClient(socket,buffer);
+    } else { //didn't find the file, return back to interface
+      printf("The file didn't exist!\n");
+
+      mainUsageClient(socket,buffer);
+    }
+
+    break;
+  case '4': //quit the system
+    recv(socket,buffer,BUFFER_LEN,0);
+    printf("%s\n",buffer);
+    bzero(buffer,BUFFER_LEN);
+    exit(1);
+    break;
+  default:
+    return 1;
   }
   
   return 1;
