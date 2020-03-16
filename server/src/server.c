@@ -256,33 +256,85 @@ int mainUsageServer(int socket, char* buffer, char* userName){
   recv(socket,&option,sizeof(option),0);
   printf("option : %c\n",option);
 
-  char* filename;
+  char filename[FILE_LEN];
   int find;
   switch (option) {
-    case '1':
-      //send the list of files
-      showFiles(socket,buffer);
+  case '1': //read the file
+    //send the list of files
+    showFiles(socket,buffer);
+    
+    //get the file name the user want to read
+    recv(socket,buffer,BUFFER_LEN,0);
+    strcpy(filename,buffer);
+    bzero(buffer,strlen(buffer));
+      
+    //send the information of the file
+    printf("The file %s\n",filename);
+    sendFileInfor(socket,filename);
+    bzero(filename,strlen(filename));
+    
+    //return back to main interface
+    printf("come back!\n");
+    mainUsageServer(socket,buffer,userName);
+    break;
+  case '2': //wirte information
+    //send the list of files
+    showFiles(socket,buffer);
 
-      //get the file name the user want to read
-      recv(socket,buffer,BUFFER_LEN,0);
-      printf("The file %s\n",buffer);
-      //strcpy(filename,buffer);
-      //bzero(buffer,BUFFER_LEN);
-      sendFileInfor(socket,buffer);
-      //return back to main interface
-      printf("come back!\n");
-      mainUsageServer(socket,buffer,userName);
-      break;
-    case '2':
-      break;
-    case '3':
-      break;
-    case '4':
-      send(socket,interfaceBye,strlen(interfaceBye),0);
-      return 1;
-      break;
-    default:
-      return 1;
+    //get the file name the user want to read
+    recv(socket,buffer,BUFFER_LEN,0);
+    printf("The file %s\n",buffer);
+    strcpy(filename,buffer);
+    bzero(buffer,strlen(buffer));
+    
+    //send the information of the file 
+    find = sendFileInfor(socket,filename);
+
+    //if find recv and create new tmp file,
+    //otherwise return back to main usage interface
+    if (find == 1) {
+      createWriteFile(socket,filename);
+      combineWriteFile(filename);
+    }
+    bzero(filename,strlen(filename));
+    
+    //return back to main interface
+    printf("come back!\n");
+    mainUsageServer(socket,buffer,userName);
+    
+    break;
+  case '3': //delete information
+    //send the list of files
+    showFiles(socket,buffer);
+
+    //get the file name the user want to read
+    recv(socket,buffer,BUFFER_LEN,0);
+    printf("The file %s\n",buffer);
+    strcpy(filename,buffer);
+    bzero(buffer,strlen(buffer));
+
+    //send the information of the file
+    find = sendFileInfor(socket,filename);
+
+    //if find recv and create new tmp file,
+    //otherwise return back to main usage interface
+    if (find == 1) {
+      createDeleteFile(socket,filename);
+      combineDeleteFile(filename);
+    }
+    bzero(filename,strlen(filename));
+
+    //return back to main interface
+    printf("come back!\n");
+    mainUsageServer(socket,buffer,userName);
+    
+    break;
+  case '4': //quit the system
+    send(socket,interfaceBye,strlen(interfaceBye),0);
+    return 1;
+    break;
+  default:
+    return 1;
   }
   return 1;
 }
@@ -350,6 +402,7 @@ int sendFileInfor(int socket, char* filename) {
   }
 
   closedir(dr);
+  printf("find the file or not: %d\n",find);
   send(socket,&find,sizeof(find),0);
   if (find == 0) {//didn't find the file
     printf("didn't find the file\n");
@@ -369,8 +422,63 @@ int sendFileInfor(int socket, char* filename) {
     readFile(filenameToRead,buffer);
     printf("send content: %s\n",buffer);
     send(socket,buffer,strlen(buffer),0);
-    bzero(filename,strlen(filename));
     sleep(1);
   }
   return 1;
+}
+
+
+void createWriteFile(int socket, char* filename) {
+  //read the new wirte information
+  char buffer[BUFFER_LEN];
+  bzero(buffer,BUFFER_LEN);
+  recv(socket, buffer,BUFFER_LEN,0);
+
+  //create new tmp write file
+  FILE *fp;
+  char writeFilePath[FILE_LEN];
+  memset(writeFilePath,0,FILE_LEN);
+
+  //get the path of write file
+  strcat(writeFilePath,DATA_PATH);
+  strcat(writeFilePath,WRITE);
+  strcat(writeFilePath,filename);
+  printf("the path of new write file: %s\n",writeFilePath);
+
+  //put the buffer to new write file
+  fp = fopen(writeFilePath,"w");
+  fputs(buffer,fp);
+  fclose(fp);
+  bzero(buffer,strlen(buffer));
+  bzero(writeFilePath,strlen(writeFilePath));
+  
+  return;
+}
+
+
+void createDeleteFile(int socket, char* filename) {
+  //read the new wirte information
+  char buffer[BUFFER_LEN];
+  bzero(buffer,BUFFER_LEN);
+  recv(socket, buffer,BUFFER_LEN,0);
+
+  //create new tmp delete file
+  FILE *fp;
+  char deleteFilePath[FILE_LEN];
+  memset(deleteFilePath,0,FILE_LEN);
+
+  //get the path of delete file
+  strcat(deleteFilePath,DATA_PATH);
+  strcat(deleteFilePath,DELETE);
+  strcat(deleteFilePath,filename);
+  printf("the path of new write file: %s\n",deleteFilePath);
+
+  //put the buffer to new delete file
+  fp = fopen(deleteFilePath,"w");
+  fputs(buffer,fp);
+  fclose(fp);
+  bzero(buffer,strlen(buffer));
+  bzero(deleteFilePath,strlen(deleteFilePath));
+  
+  return;
 }

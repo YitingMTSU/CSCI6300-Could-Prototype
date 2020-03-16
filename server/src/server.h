@@ -11,6 +11,8 @@
 #define ACCOUNT_PATH "/nfshome/yw3c/CSCI6430/CSCI6300-Could-Prototype/server/data/userAccount/userInfo.txt"
 #define DATA_PATH "/nfshome/yw3c/CSCI6430/CSCI6300-Could-Prototyp\
 e/server/data/userData/"
+#define WRITE "write"
+#define DELETE "delete"
 
 const char* interfaceWelcome = "Welcome To Ranger/Herschel Cloud!";
 const char* interfaceUser = "Please enter your username: ";
@@ -43,6 +45,18 @@ void showFiles(int socket, char* buffer);
 
 //send the information of the file to the user
 int sendFileInfor(int socket, char* filename);
+
+//create tmp write file
+void createWriteFile(int socket, char* filename);
+
+//create tmp delete file
+void createDeleteFile(int socket, char* filename);
+
+//combine the write file and original data file
+void combineWriteFile(char* filename);
+
+//combine the delete file and the original data file
+void combineDeleteFile(char* filename);
 
 #endif
 
