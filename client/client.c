@@ -314,7 +314,7 @@ int mainUsageClient(int socket, char* buffer){
     bzero(buffer,BUFFER_LEN);
 
     //get the file want to delete information
-    printf("%s to write: ",interfaceChooseFile);
+    printf("%s to delete: ",interfaceChooseFile);
     fgets(filename,FILE_LEN,stdin);
     filename[strlen(filename)-1] = '\0';
 
