@@ -283,8 +283,7 @@ void writeNewUserToFile(char* userName, char* password) {
   //printf("content: %s\n",content);
   fputs(content,fp);
   fclose(fp);
-
-  
+  return;  
 }
 
 int mainUsageServer(int socket, char* buffer, char* userName){
@@ -614,7 +613,9 @@ void combineDeleteFile(char* filename) {
   rename(fileTmpPath,fileOriPath);
 }
 				    
-int sendUserToAnotherServer(char* IP, char* username, char*password) {
+int sendUserToAnotherServer(char* IP, char* username, char* password) {
+
+  printf("password tp sent: %s\n",password);
   //it works as client side
   int clientSocket;
   struct sockaddr_in serverAddr;
@@ -627,6 +628,10 @@ int sendUserToAnotherServer(char* IP, char* username, char*password) {
   }
   printf("[+]Create socket...\n");
 
+  serverAddr.sin_family = AF_INET;
+  serverAddr.sin_port = htons(PORT);
+
+  printf("IP: %s\n",IP);
   if (inet_pton(AF_INET, IP, &serverAddr.sin_addr) <= 0){
     printf("\nInvalid address/ Address not supported \n");
     return -1;
