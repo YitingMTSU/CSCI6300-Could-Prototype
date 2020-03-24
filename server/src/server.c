@@ -614,8 +614,6 @@ void combineDeleteFile(char* filename) {
 }
 				    
 int sendUserToAnotherServer(char* IP, char* username, char* password) {
-
-  printf("password tp sent: %s\n",password);
   //it works as client side
   int clientSocket;
   struct sockaddr_in serverAddr;
@@ -661,7 +659,7 @@ int sendUserToAnotherServer(char* IP, char* username, char* password) {
     recv(clientSocket,&userExist,sizeof(userExist),0);
 
     recv(clientSocket, buffer, BUFFER_LEN, 0);
-    printf("%s\n", buffer);
+    //printf("%s\n", buffer);
     memset(buffer, 0, BUFFER_LEN);
 
     //send root's password
@@ -686,6 +684,7 @@ int sendUserToAnotherServer(char* IP, char* username, char* password) {
     recv(clientSocket, &messageGet, sizeof(messageGet),0);
 
     //send password
+    printf("the password to send: %s, the len: %ld\n",password,strlen(password));
     send(clientSocket, &password, strlen(password), 0);
 
     recv(clientSocket, &messageGet, sizeof(messageGet),0);
@@ -721,10 +720,12 @@ void rootSyn(int socket, char* buffer) {
   bzero(userName,USERNAME_LEN);
   bzero(password,PASSWORD_LEN);
   //bzero(buffer,BUFFER_LEN);
-  
+  printf("password before receive in server: %s\n",password);
+  printf("password len: %d\n",PASSWORD_LEN);
   switch (option) {
   case 1: // add the new user
     recv(socket, userName, USERNAME_LEN, 0);
+    printf("userName: %s\n",userName);
     send(socket, &messageGet, sizeof(messageGet),0);
     recv(socket, password, PASSWORD_LEN, 0);
     printf("password received: %s\n",password);
