@@ -16,6 +16,7 @@ e/server/data/userData/"
 #define DELETE "delete"
 #define ROOT "root"
 #define ROOT_PASSWORD "12345"
+#define SRC_LEN 4
 
 const char* interfaceWelcome = "Welcome To Ranger/Herschel Cloud!";
 const char* interfaceUser = "Please enter your username: ";
@@ -67,6 +68,8 @@ int sendUserToAnotherServer(char* IP, char* username, char* password);
 //synchronizing the information
 void rootSyn(int socket, char* buffer);
 
+//set the ACCOUNT_PATH and DATA_PATH
+void getPath();
 
 #endif
 
