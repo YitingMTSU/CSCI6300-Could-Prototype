@@ -9,9 +9,6 @@
 #define USERNAME_LEN 20
 #define PASSWORD_LEN 50
 #define FILE_LEN 300
-//#define ACCOUNT_PATH "/nfshome/yw3c/CSCI6430/CSCI6300-Could-Prototype/server/data/userAccount/userInfo.txt"
-//#define DATA_PATH "/nfshome/yw3c/CSCI6430/CSCI6300-Could-Prototyp	\
-e/server/data/userData/"
 #define WRITE "write"
 #define DELETE "delete"
 #define ROOT "root"

@@ -752,9 +752,5 @@ void getPath() {
    strcpy(DATA_PATH,cwd);
    strcat(DATA_PATH,"data/userData/");
 
-   printf("account path: %s\n",ACCOUNT_PATH);
-   printf("data path: %s\n",DATA_PATH);
-
-   
    return; 
 }
