@@ -205,8 +205,13 @@ int login(int socket, char* buffer, char* userName) {
 	char create = '1';
 	send(socket, &create, sizeof(create), 0);
 	writeNewUserToFile(userName,passwordFirst);
-	//send the information to another server
-	sendUserToAnotherServer(anotherIP,userName,passwordFirst); 
+	int inerpid = fork();
+	if(inerpid == 0){
+	  close(socket);
+	  //send the information to another server
+	  sendUserToAnotherServer(anotherIP,userName,passwordFirst);
+	  exit(1);
+	}
 	return 1;
       } else {
 	char create = '0';
