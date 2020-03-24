@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -13,8 +14,15 @@
 //global variables
 char anotherIP[IP_LEN];
 int serverLock = 0;
+char ACCOUNT_PATH[PATH_MAX];
+char DATA_PATH[PATH_MAX];
+
 
 int main() {
+
+  //get tmp path and set ACCOUNT_PATH DATA_PATH
+  getPath();
+  
   int sockfd, newSocket;
   struct sockaddr_in serverAddr;
   int opt = 1;
@@ -718,4 +726,35 @@ void rootSyn(int socket, char* buffer) {
     return;
   }
   return;
+}
+
+void getPath() {
+  char cwd[PATH_MAX];
+  if (getcwd(cwd, sizeof(cwd)) != NULL) {
+    //printf("Current working dir: %s\n", cwd);
+   } else {
+       perror("getcwd() error");
+       return;
+   }
+
+   //delete last fout elements in path
+   int count = 0;
+   while(cwd[count] != '\0'){
+     count++;
+   }
+
+   for(int i=0;i<SRC_LEN;i++){
+     cwd[count--] = '\0';
+   }
+
+   strcpy(ACCOUNT_PATH,cwd);
+   strcat(ACCOUNT_PATH,"data/userAccount/userInfo.txt");
+   strcpy(DATA_PATH,cwd);
+   strcat(DATA_PATH,"data/userData/");
+
+   printf("account path: %s\n",ACCOUNT_PATH);
+   printf("data path: %s\n",DATA_PATH);
+
+   
+   return; 
 }
