@@ -57,7 +57,7 @@ int main() {
       return -1;
     }
     printf("[+]Convert the RANGER IP...\n");    
-  }
+  } 
 
   
   if (connect(clientSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
@@ -65,15 +65,28 @@ int main() {
   }
   printf("[+]Connect to the sever...\n");
 
-  //login into the server
-  int logInS = login(clientSocket,buffer);
-  memset(buffer, 0, strlen(buffer));
+
+  //send the serverIP to server
+  send(clientSocket,&serverIP,sizeof(serverIP),0);
   
-  while (logInS) {
-    int quit = mainUsageClient(clientSocket, buffer);
-    if (quit == 1) break;
+  //check if the server is lock or not
+  int lock;
+  recv(clientSocket,&lock,sizeof(lock),0);
+  if (lock == 0) {
+    //login into the server
+    int logInS = login(clientSocket,buffer);
+    memset(buffer, 0, strlen(buffer));
+    
+    while (logInS) {
+      int quit = mainUsageClient(clientSocket, buffer);
+      if (quit == 1) break;
+    }
+  } else {
+    printf("The server is locked right now, please try later!\n");
   }
 
+  close(clientSocket);
+    
   return 0;
 }
 
@@ -85,22 +98,22 @@ int login(int socket, char* buffer) {
   //recv(socket, &messageLen, sizeof(messageLen), 0);
   //printf("the messagelen : %d\n",messageLen);
   //sig = recv(socket, buffer, messageLen, 0);
-  recv(socket, buffer, BUFFER_LEN, 0);
-  printf("%s\n",buffer);
-  bzero(buffer, BUFFER_LEN);
+  //recv(socket, buffer, BUFFER_LEN, 0);
+  printf("%s\n",interfaceWelcome);
+  //bzero(buffer, BUFFER_LEN);
   //sleep(0.5);
   
   //recv(socket, &messageLen, sizeof(messageLen), 0);
-  recv(socket, buffer, BUFFER_LEN, 0);
-  printf("%s",buffer);
-  memset(buffer, 0, BUFFER_LEN);
+  //recv(socket, buffer, BUFFER_LEN, 0);
+  printf("%s",interfaceUser);
+  //memset(buffer, 0, BUFFER_LEN);
   
   //get user name
   char userName[USERNAME_LEN];
   memset(userName,0,USERNAME_LEN);
   //int count = 0;
   fgets(userName,USERNAME_LEN,stdin);
-  userName[strlen(userName)-1] = 0; //otherwise \n at the end
+  userName[strlen(userName)-1] = 0; //otherwise \n at the end  
   send(socket,userName,strlen(userName),0);
 
 
@@ -330,7 +343,7 @@ int mainUsageClient(int socket, char* buffer){
       bzero(buffer,BUFFER_LEN);
 
       //get the new information you want to delete
-      printf("Enter the information you want to write:\n");
+      printf("Enter the information you want to delete:\n");
       fgets(buffer,BUFFER_LEN,stdin);
 
       //send information
