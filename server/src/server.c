@@ -724,10 +724,14 @@ void rootSyn(int socket, char* buffer) {
   printf("password len: %d\n",PASSWORD_LEN);
   switch (option) {
   case 1: // add the new user
-    recv(socket, userName, USERNAME_LEN, 0);
+    recv(socket, buffer, BUFFER_LEN, 0);
+    strcpy(userName,buffer);
+    bzero(buffer,BUFFER_LEN);
     printf("userName: %s\n",userName);
     send(socket, &messageGet, sizeof(messageGet),0);
-    recv(socket, password, PASSWORD_LEN, 0);
+    recv(socket, buffer, BUFFER_LEN, 0);
+    strcpy(password,buffer);
+    bzero(buffer,BUFFER_LEN);
     printf("password received: %s\n",password);
     send(socket, &messageGet, sizeof(messageGet),0);
     writeNewUserToFile(userName,password);
