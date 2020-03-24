@@ -726,6 +726,8 @@ void rootSyn(int socket, char* buffer) {
     recv(socket, userName, USERNAME_LEN, 0);
     send(socket, &messageGet, sizeof(messageGet),0);
     recv(socket, password, PASSWORD_LEN, 0);
+    printf("password received: %s\n");
+    send(socket, &messageGet, sizeof(messageGet),0);
     writeNewUserToFile(userName,password);
     break;
   case 2: // synchronize the write file
