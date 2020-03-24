@@ -681,9 +681,11 @@ int sendUserToAnotherServer(char* IP, char* username, char* password) {
     //send user name
     send(clientSocket, username, strlen(username), 0);
 
+    recv(clientSocket, &messageGet, sizeof(messageGet),0);
     //send password
     printf("the password to send: %s, the len: %ld\n",password,strlen(password));
     send(clientSocket, password, strlen(password), 0);
+    recv(clientSocket, &messageGet, sizeof(messageGet),0);
 
     close(clientSocket);
     return 1;
@@ -719,8 +721,10 @@ void rootSyn(int socket, char* buffer) {
   switch (option) {
   case 1: // add the new user
     recv(socket, userName, USERNAME_LEN, 0);
+    send(socket, &messageGet, sizeof(messageGet), 0);
     printf("userName: %s\n",userName);
     recv(socket, password, PASSWORD_LEN, 0);
+    send(socket, &messageGet, sizeof(messageGet), 0);
     printf("password received: %s\n",password);
     writeNewUserToFile(userName,password);
     break;
