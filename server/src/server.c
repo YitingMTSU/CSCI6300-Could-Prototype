@@ -688,6 +688,7 @@ int sendUserToAnotherServer(char* IP, char* username, char* password) {
     //send password
     send(clientSocket, &password, strlen(password), 0);
 
+    recv(clientSocket, &messageGet, sizeof(messageGet),0);
     close(clientSocket);
     return 1;
     
