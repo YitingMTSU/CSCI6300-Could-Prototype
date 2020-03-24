@@ -627,7 +627,7 @@ int sendUserToAnotherServer(char* IP, char* username, char*password) {
   }
   printf("[+]Create socket...\n");
 
-  if (inet_pton(AF_INET, anotherIP, &serverAddr.sin_addr) <= 0){
+  if (inet_pton(AF_INET, IP, &serverAddr.sin_addr) <= 0){
     printf("\nInvalid address/ Address not supported \n");
     return -1;
   }
