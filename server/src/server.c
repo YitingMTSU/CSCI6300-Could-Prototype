@@ -681,13 +681,10 @@ int sendUserToAnotherServer(char* IP, char* username, char* password) {
     //send user name
     send(clientSocket, username, strlen(username), 0);
 
-    recv(clientSocket, &messageGet, sizeof(messageGet),0);
-
     //send password
     printf("the password to send: %s, the len: %ld\n",password,strlen(password));
-    send(clientSocket, &password, strlen(password), 0);
+    send(clientSocket, password, strlen(password), 0);
 
-    recv(clientSocket, &messageGet, sizeof(messageGet),0);
     close(clientSocket);
     return 1;
     
@@ -713,27 +710,18 @@ void rootSyn(int socket, char* buffer) {
   int messageGet = 1;
   send(socket, &messageGet, sizeof(messageGet), 0);
 
-
   char userName[USERNAME_LEN];
   char password[PASSWORD_LEN];
   //initialize
   bzero(userName,USERNAME_LEN);
   bzero(password,PASSWORD_LEN);
-  //bzero(buffer,BUFFER_LEN);
-  printf("password before receive in server: %s\n",password);
-  printf("password len: %d\n",PASSWORD_LEN);
+
   switch (option) {
   case 1: // add the new user
-    recv(socket, buffer, BUFFER_LEN, 0);
-    strcpy(userName,buffer);
-    bzero(buffer,BUFFER_LEN);
+    recv(socket, userName, USERNAME_LEN, 0);
     printf("userName: %s\n",userName);
-    send(socket, &messageGet, sizeof(messageGet),0);
-    recv(socket, buffer, BUFFER_LEN, 0);
-    strcpy(password,buffer);
-    bzero(buffer,BUFFER_LEN);
+    recv(socket, password, PASSWORD_LEN, 0);
     printf("password received: %s\n",password);
-    send(socket, &messageGet, sizeof(messageGet),0);
     writeNewUserToFile(userName,password);
     break;
   case 2: // synchronize the write file
