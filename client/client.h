@@ -14,6 +14,10 @@
 
 const char* interfaceFiles = "The following are the files:";
 const char* interfaceChooseFile = "Choose your File";
+const char* interfaceWelcome = "Welcome To Ranger/Herschel Cloud!";
+const char* interfaceUser = "Please enter your username: ";
+
+
 
 //log into the account
 int login(int socket, char* buffer);
