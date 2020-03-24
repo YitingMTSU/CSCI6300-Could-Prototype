@@ -2,6 +2,7 @@
 #define SERVER_H
 
 #define BUFFER_LEN 1024
+#define IP_LEN 20
 #define PORT 3303
 #define SERVER_HERSCHEL_IP "161.45.162.78"
 #define SERVER_RANGER_IP "161.45.162.71"
@@ -13,6 +14,8 @@
 e/server/data/userData/"
 #define WRITE "write"
 #define DELETE "delete"
+#define ROOT "root"
+#define ROOT_PASSWORD "12345"
 
 const char* interfaceWelcome = "Welcome To Ranger/Herschel Cloud!";
 const char* interfaceUser = "Please enter your username: ";
@@ -57,6 +60,13 @@ void combineWriteFile(char* filename);
 
 //combine the delete file and the original data file
 void combineDeleteFile(char* filename);
+
+//send the information of new user to antoher sever
+int sendUserToAnotherServer(char* IP, char* username, char* password);
+
+//synchronizing the information
+void rootSyn(int socket, char* buffer);
+
 
 #endif
 
