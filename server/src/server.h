@@ -68,6 +68,11 @@ void rootSyn(int socket, char* buffer);
 //set the ACCOUNT_PATH and DATA_PATH
 void getPath();
 
+//check the permission for the user
+//user call read all the data file
+//but only can write/delete for its own file
+int checkPermission(char* filename, char* username);
+
 #endif
 
 

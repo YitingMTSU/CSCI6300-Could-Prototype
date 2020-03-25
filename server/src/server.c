@@ -298,6 +298,8 @@ int mainUsageServer(int socket, char* buffer, char* userName){
 
   char filename[FILE_LEN];
   int find;
+  int permission;
+  
   switch (option) {
   case '1': //read the file
     //send the list of files
@@ -333,7 +335,9 @@ int mainUsageServer(int socket, char* buffer, char* userName){
     //if find recv and create new tmp file,
     //otherwise return back to main usage interface
     if (find == 1) {
-      createWriteFile(socket,filename);
+      permission = checkPermission(filename, userName);
+      send(socket, &permission, sizeof(permission), 0);
+      if (permission == 1) createWriteFile(socket,filename);
       //sendFileToAnotherServer(anotherIP,filename,WRITE);
       //combineWriteFile(filename);
     }
@@ -360,8 +364,9 @@ int mainUsageServer(int socket, char* buffer, char* userName){
     //if find recv and create new tmp file,
     //otherwise return back to main usage interface
     if (find == 1) {
-      //checkPermission(userName,filename);
-      createDeleteFile(socket,filename);
+      permission = checkPermission(filename, userName);
+      send(socket, &permission, sizeof(permission), 0);
+      if (permission == 1) createDeleteFile(socket,filename);
       //sendFileToAnotherServer(anotherIP,filename,DELETE);
       //combineDeleteFile(filename);
     }
@@ -747,7 +752,7 @@ void getPath() {
        return;
    }
 
-   //delete last fout elements in path
+   //delete last three elements(src) in path
    int count = 0;
    while(cwd[count] != '\0'){
      count++;
@@ -763,4 +768,17 @@ void getPath() {
    strcat(DATA_PATH,"data/userData/");
 
    return; 
+}
+
+int checkPermission(char* filename, char* username) {
+
+  int len = strlen(username);
+  int i;
+
+  for (i=0;i<len;i++) {
+    if (filename[i] != username[i]) break;
+  }
+
+  if (i == len) return 1;
+  return -1;
 }
