@@ -786,7 +786,7 @@ void rootSyn(int socket, char* buffer) {
     send(socket, &messageGet, sizeof(messageGet), 0);
     bzero(buffer,strlen(buffer));
 
-    combineWriteFile(fileName);
+    combineDeleteFile(fileName);
     break;
   default:
     return;
@@ -883,10 +883,10 @@ void checkWD(int socket, int lockInd, char* username) {
     //int pid = fork();
     //if (pid != 0) {
     //  close(socket);
-      printf("filename in checkWD:%s\n",filename);
-      sendWriteFile(anotherIP,filename);
-      //  exit(1);
-      //}
+    printf("filename in checkWD:%s\n",filename);
+    sendWriteFile(anotherIP,filename);
+    //  exit(1);
+    //}
     
     //combine wirte file
     combineWriteFile(filename);
