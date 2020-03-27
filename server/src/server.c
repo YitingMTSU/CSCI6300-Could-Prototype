@@ -883,9 +883,11 @@ void checkWD(int socket, int lockInd, char* username) {
     int pid = fork();
     if (pid != 0) {
       close(socket);
+      printf("filename in checkWD:%s\n",filename);
       sendWriteFile(anotherIP,filename);
       exit(1);
     }
+    exit(1);
     //wait(NULL);
     
     //combine wirte file
@@ -988,6 +990,7 @@ int sendWriteFile(char* IP, char* filename) {
     strcat(writeFilePath,WRITE);
     strcat(writeFilePath,filename);
 
+    printf("the write file:%s\n",writeFilePath);
     //read buffer from the file
     FILE *fin;
     fin = fopen(writeFilePath,"r");
@@ -998,7 +1001,7 @@ int sendWriteFile(char* IP, char* filename) {
       strcat(buffer,lineWrite);
       bzero(lineWrite,BUFFER_LEN);
     }
-    //send user name
+    //send file name
     send(clientSocket, filename, strlen(filename), 0);
 
     recv(clientSocket, &messageGet, sizeof(messageGet),0);
