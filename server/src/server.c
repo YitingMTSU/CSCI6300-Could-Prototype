@@ -766,9 +766,8 @@ void rootSyn(int socket, char* buffer) {
     writeNewUserToFile(userName,password);
     break;
   case 2: // synchronize the write file
-    recv(socket, userName, USERNAME_LEN, 0);
-    strcpy(fileName,userName);
-    strcat(fileName,"Data.txt");
+    recv(socket, fileName, FILE_LEN, 0);
+    printf("root syn write filename: %s\n",fileName);
     send(socket, &messageGet, sizeof(messageGet), 0);
     //recv(socket, buffer, BUFFER_LEN, 0);
     createWriteFile(socket,fileName);
@@ -884,7 +883,7 @@ void checkWD(int socket, int lockInd, char* username) {
     int pid = fork();
     if (pid != 0) {
       close(socket);
-      sendWriteFile(anotherIP,username,filename);
+      sendWriteFile(anotherIP,filename);
       exit(1);
     }
     //wait(NULL);
@@ -901,7 +900,7 @@ void checkWD(int socket, int lockInd, char* username) {
     int pid = fork();
     if (pid != 0) {
       close(socket);
-      sendDeleteFile(anotherIP,username,filename);
+      sendDeleteFile(anotherIP,filename);
       exit(1);
     }
     //wait(NULL);
@@ -918,7 +917,7 @@ void checkWD(int socket, int lockInd, char* username) {
    
 }
 
-int sendWriteFile(char* IP, char* username, char* filename) {
+int sendWriteFile(char* IP, char* filename) {
   //it works as client side
   int clientSocket;
   struct sockaddr_in serverAddr;
@@ -1000,7 +999,7 @@ int sendWriteFile(char* IP, char* username, char* filename) {
       bzero(lineWrite,BUFFER_LEN);
     }
     //send user name
-    send(clientSocket, username, strlen(username), 0);
+    send(clientSocket, filename, strlen(filename), 0);
 
     recv(clientSocket, &messageGet, sizeof(messageGet),0);
 
@@ -1019,7 +1018,7 @@ int sendWriteFile(char* IP, char* username, char* filename) {
   return 1;
 }
 
-int sendDeleteFile(char* IP, char* username, char* filename) {
+int sendDeleteFile(char* IP, char* filename) {
   //it works as client side
   int clientSocket;
   struct sockaddr_in serverAddr;
@@ -1101,7 +1100,7 @@ int sendDeleteFile(char* IP, char* username, char* filename) {
       bzero(lineDel,BUFFER_LEN);
     }
     //send user name
-    send(clientSocket, username, strlen(username), 0);
+    send(clientSocket, filename, strlen(filename), 0);
 
     recv(clientSocket, &messageGet, sizeof(messageGet),0);
 

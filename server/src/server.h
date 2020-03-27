@@ -92,10 +92,10 @@ int getCurLockInd(char* username);
 void checkWD(int socket, int lockInd, char* username);
 
 //send the write file to another server
-int sendWriteFile(char* IP, char* username, char* filename);
+int sendWriteFile(char* IP, char* filename);
 
 //send the delete file to another server
-int sendDeleteFile(char* IP, char* username, char* filename);
+int sendDeleteFile(char* IP, char* filename);
 
 #endif
 
