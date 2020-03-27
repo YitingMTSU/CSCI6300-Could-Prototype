@@ -247,6 +247,7 @@ int mainUsageClient(int socket, char* buffer){
 
   char filename[FILE_LEN];
   int find;
+  int permission;
   switch (option) {
   case '1': //read file
     //receive the list of files
@@ -279,45 +280,53 @@ int mainUsageClient(int socket, char* buffer){
     }
     break;
   case '2': //write information
+
     //receive the list of files
     printf("%s\n",interfaceFiles);
     recv(socket,buffer,BUFFER_LEN,0);
     printf("%s",buffer);
     bzero(buffer,BUFFER_LEN);
-
+    
     //get the file want to write
     printf("%s to write: ",interfaceChooseFile);
     fgets(filename,FILE_LEN,stdin);
     filename[strlen(filename)-1] = '\0';
-
+    
     //send the file name the user want to write
     send(socket,filename,strlen(filename),0);
 
-    //recv the information from the file
-    recv(socket,&find,sizeof(find),0);
-    if (find == 1) { //find the file, print the information
-      //read the information of file
-      recv(socket,buffer,BUFFER_LEN,0);
-      printf("%s:\n%s\n\n",filename,buffer);
-      bzero(buffer,BUFFER_LEN);
+    //receive the permission
+    recv(socket,&permission,sizeof(permission),0);
 
-      //get the new information you want to wirte
-      printf("Enter the information you want to write:\n");
-      fgets(buffer,BUFFER_LEN,stdin);
-
-      //send information
-      send(socket,buffer,strlen(buffer),0);
-      printf("[+]New information to write sent.\n");
-      bzero(buffer,BUFFER_LEN);
+    if (permission == 1) {
+      //recv the information from the file
+      recv(socket,&find,sizeof(find),0);
+      if (find == 1) { //find the file, print the information
+	
+	//read the information of file
+	recv(socket,buffer,BUFFER_LEN,0);
+	printf("%s:\n%s\n\n",filename,buffer);
+	bzero(buffer,BUFFER_LEN);
+	
+	//get the new information you want to wirte
+	printf("Enter the information you want to write:\n");
+	fgets(buffer,BUFFER_LEN,stdin);
+	
+	//send information
+	send(socket,buffer,strlen(buffer),0);
+	printf("[+]New information to write sent.\n");
+	bzero(buffer,BUFFER_LEN);
+	
+	sleep(1);
+      } else { //didn't find the file, return back to interface
+	printf("The file didn't exist!\n");
+      }
       
-      sleep(1);
       mainUsageClient(socket,buffer);
-    } else { //didn't find the file, return back to interface
-      printf("The file didn't exist!\n");
-
+    } else {
+      printf("You You didn't have the permission to write.\n");
       mainUsageClient(socket,buffer);
     }
-
     break;
   case '3': //delete information
     //receive the list of files
@@ -334,31 +343,37 @@ int mainUsageClient(int socket, char* buffer){
     //send the file name the user want to delete information
     send(socket,filename,strlen(filename),0);
 
-    //recv the information from the file
-    recv(socket,&find,sizeof(find),0);
-    if (find == 1) { //find the file, print the information
-      //read the information of file
-      recv(socket,buffer,BUFFER_LEN,0);
-      printf("%s:\n%s\n\n",filename,buffer);
-      bzero(buffer,BUFFER_LEN);
 
-      //get the new information you want to delete
-      printf("Enter the information you want to delete:\n");
-      fgets(buffer,BUFFER_LEN,stdin);
+    //receive the permission
+    recv(socket,&permission,sizeof(permission),0);
 
-      //send information
-      send(socket,buffer,strlen(buffer),0);
-      printf("[+]Information to delete sent.\n");
-      bzero(buffer,strlen(buffer));
-
-      sleep(1);
+    if (permission == 1) {
+      //recv the information from the file
+      recv(socket,&find,sizeof(find),0);
+      if (find == 1) { //find the file, print the information	
+	//read the information of file
+	recv(socket,buffer,BUFFER_LEN,0);
+	printf("%s:\n%s\n\n",filename,buffer);
+	bzero(buffer,BUFFER_LEN);
+	
+	//get the new information you want to delete
+	printf("Enter the information you want to delete:\n");
+	fgets(buffer,BUFFER_LEN,stdin);
+	
+	//send information
+	send(socket,buffer,strlen(buffer),0);
+	printf("[+]Information to delete sent.\n");
+	bzero(buffer,strlen(buffer));
+	
+	sleep(1);
+      } else { //didn't find the file, return back to interface
+	printf("The file didn't exist!\n");
+      }
       mainUsageClient(socket,buffer);
-    } else { //didn't find the file, return back to interface
-      printf("The file didn't exist!\n");
-
+    } else {
+      printf("You You didn't have the permission to delete.\n");
       mainUsageClient(socket,buffer);
     }
-
     break;
   case '4': //quit the system
     recv(socket,buffer,BUFFER_LEN,0);
