@@ -16,12 +16,20 @@ char anotherIP[IP_LEN];
 int serverLock = 0;
 char ACCOUNT_PATH[PATH_MAX];
 char DATA_PATH[PATH_MAX];
-
+struct FILELOCK fileLock[MAX_USER];
+int curUser = 0;
 
 int main() {
 
   //get tmp path and set ACCOUNT_PATH DATA_PATH
   getPath();
+
+  //initial the fileLock
+  setFileLock();
+  /*
+  for(int i=0;i<curUser;i++){
+    printf("filename: %s, (lock,write,delete) = (%d,%d,%d)\n",fileLock[i].filename,fileLock[i].lock,fileLock[i].write,fileLock[i].delete);
+    }*/
   
   int sockfd, newSocket;
   struct sockaddr_in serverAddr;
@@ -102,10 +110,14 @@ int main() {
 	//print the username to check
 	printf("usernama: %s\n",userName);
 	if (strcmp(userName,"root") == 0) {
+	  serverLock = 1;
 	  rootSyn(newSocket,buffer);
-	} else { //common users	
+	  serverLock = 0;
+	} else { //common users
+	  int curLockInd = getCurLockInd(userName);
+	  
 	  while (logInS) {
-	    int quit = mainUsageServer(newSocket, buffer,userName);
+	    int quit = mainUsageServer(newSocket, buffer,userName, curLockInd);
 	    if (quit == 1) break;
 	  }//end while
 	}
@@ -205,6 +217,7 @@ int login(int socket, char* buffer, char* userName) {
 	char create = '1';
 	send(socket, &create, sizeof(create), 0);
 	writeNewUserToFile(userName,passwordFirst);
+	
 	int inerpid = fork();
 	if(inerpid == 0){
 	  close(socket);
@@ -286,7 +299,7 @@ void writeNewUserToFile(char* userName, char* password) {
   return;  
 }
 
-int mainUsageServer(int socket, char* buffer, char* userName){
+int mainUsageServer(int socket, char* buffer, char* userName, int lockInd){
   send(socket, interfaceUsage, strlen(interfaceUsage), 0);
   printf("usage sent\n");
   sleep(1);
@@ -317,7 +330,7 @@ int mainUsageServer(int socket, char* buffer, char* userName){
     
     //return back to main interface
     printf("come back!\n");
-    mainUsageServer(socket,buffer,userName);
+    mainUsageServer(socket,buffer,userName,lockInd);
     break;
   case '2': //wirte information
     //send the list of files
@@ -340,6 +353,10 @@ int mainUsageServer(int socket, char* buffer, char* userName){
       //if find recv and create new tmp file,
       //otherwise return back to main usage interface
       if (find == 1) {
+	//lock the file
+	fileLock[lockInd].lock = 1;
+	fileLock[lockInd].write = 1;
+	//create write file
 	createWriteFile(socket,filename);
 	//sendFileToAnotherServer(anotherIP,filename,WRITE);
 	//combineWriteFile(filename);
@@ -349,7 +366,7 @@ int mainUsageServer(int socket, char* buffer, char* userName){
     
     //return back to main interface
     printf("come back!\n");
-    mainUsageServer(socket,buffer,userName);
+    mainUsageServer(socket,buffer,userName,lockInd);
     
     break;
   case '3': //delete information
@@ -373,6 +390,10 @@ int mainUsageServer(int socket, char* buffer, char* userName){
       //if find recv and create new tmp file,
       //otherwise return back to main usage interface
       if (find == 1) {
+	//lock the file
+	fileLock[lockInd].lock = 1;
+        fileLock[lockInd].delete = 1;
+	//create delete file
 	createDeleteFile(socket,filename);
 	//sendFileToAnotherServer(anotherIP,filename,DELETE);
 	//combineDeleteFile(filename);
@@ -381,11 +402,13 @@ int mainUsageServer(int socket, char* buffer, char* userName){
     }
     //return back to main interface
     printf("come back!\n");
-    mainUsageServer(socket,buffer,userName);
+    mainUsageServer(socket,buffer,userName,lockInd);
     
     break;
   case '4': //quit the system
     send(socket,interfaceBye,strlen(interfaceBye),0);
+    
+    checkWD(socket,lockInd,userName);
     return 1;
     break;
   default:
@@ -726,9 +749,11 @@ void rootSyn(int socket, char* buffer) {
 
   char userName[USERNAME_LEN];
   char password[PASSWORD_LEN];
+  char fileName[FILE_LEN];
   //initialize
   bzero(userName,USERNAME_LEN);
   bzero(password,PASSWORD_LEN);
+  bzero(fileName,FILE_LEN);
 
   switch (option) {
   case 1: // add the new user
@@ -741,8 +766,28 @@ void rootSyn(int socket, char* buffer) {
     writeNewUserToFile(userName,password);
     break;
   case 2: // synchronize the write file
+    recv(socket, userName, USERNAME_LEN, 0);
+    strcpy(fileName,userName);
+    strcat(fileName,"Data.txt");
+    send(socket, &messageGet, sizeof(messageGet), 0);
+    //recv(socket, buffer, BUFFER_LEN, 0);
+    createWriteFile(socket,fileName);
+    send(socket, &messageGet, sizeof(messageGet), 0);
+    bzero(buffer,strlen(buffer));
+    
+    combineWriteFile(fileName);
     break;
   case 3: // synchronize the delete file
+    recv(socket, userName, USERNAME_LEN, 0);
+    strcpy(fileName,userName);
+    strcat(fileName,"Data.txt");
+    send(socket, &messageGet, sizeof(messageGet), 0);
+    //recv(socket, buffer, BUFFER_LEN, 0);
+    createDeleteFile(socket,fileName);
+    send(socket, &messageGet, sizeof(messageGet), 0);
+    bzero(buffer,strlen(buffer));
+
+    combineWriteFile(fileName);
     break;
   default:
     return;
@@ -790,4 +835,287 @@ int checkPermission(char* filename, char* username) {
   
   if (i == len) return 1;
   return -1;
+}
+
+void setFileLock() {
+  struct dirent *de;
+  DIR *dr = opendir(DATA_PATH);
+
+  if (dr == NULL) {
+    printf("Could not open curent directory\n");
+    exit(1);
+  }
+
+  // for readdir()
+  while ((de = readdir(dr)) != NULL) {
+    if(strcmp(de->d_name,"..") == 0 || strcmp(de->d_name,".")==0) continue;
+    
+    strcpy(fileLock[curUser].filename,de->d_name);
+    fileLock[curUser].lock = 0;
+    fileLock[curUser].write = 0;
+    fileLock[curUser].delete = 0;
+    curUser++;
+  }
+
+  closedir(dr);
+
+  return;
+}
+
+int getCurLockInd(char* username) {
+  char curFileName[FILE_LEN];
+  strcpy(curFileName,username);
+  strcat(curFileName,"Data.txt");
+  for (int i=0;i<curUser;i++) {
+    if (strcmp(fileLock[i].filename,curFileName) == 0) {
+      return i;
+    }
+  }
+  printf("error user!\n");
+  exit(1);  
+}
+
+void checkWD(int socket, int lockInd, char* username) {
+  if (fileLock[lockInd].write == 1) {
+    char filename[FILE_LEN];
+    strcpy(filename,username);
+    strcat(filename,"Data.txt");
+
+    int pid = fork();
+    if (pid != 0) {
+      close(socket);
+      sendWriteFile(anotherIP,username,filename);
+      exit(1);
+    }
+    //wait(NULL);
+    
+    //combine wirte file
+    combineWriteFile(filename);
+  }
+
+  if (fileLock[lockInd].delete == 1) {
+    char filename[FILE_LEN];
+    strcpy(filename,username);
+    strcat(filename,"Data.txt");
+
+    int pid = fork();
+    if (pid != 0) {
+      close(socket);
+      sendDeleteFile(anotherIP,username,filename);
+      exit(1);
+    }
+    //wait(NULL);
+    
+    //combine the delete file
+    combineDeleteFile(filename);
+  }
+
+
+  //unlock the file
+  fileLock[lockInd].lock = 0;
+  fileLock[lockInd].write = 0;
+  fileLock[lockInd].delete = 0;
+   
+}
+
+int sendWriteFile(char* IP, char* username, char* filename) {
+  //it works as client side
+  int clientSocket;
+  struct sockaddr_in serverAddr;
+  char buffer[BUFFER_LEN];
+  memset(buffer, 0, sizeof(buffer));
+
+  if ((clientSocket = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+    printf("\n Socket creation error \n");
+    return -1;
+  }
+  printf("[+]Create socket...\n");
+
+  serverAddr.sin_family = AF_INET;
+  serverAddr.sin_port = htons(PORT);
+
+  printf("IP: %s\n",IP);
+  if (inet_pton(AF_INET, IP, &serverAddr.sin_addr) <= 0){
+    printf("\nInvalid address/ Address not supported \n");
+    return -1;
+  }
+  printf("[+]Convert the SERVER IP...\n");
+
+  if (connect(clientSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
+    printf("\nConnection Failed \n");
+  }
+  printf("[+]Connect to the sever...\n");
+
+  int serverIP = 1; //it doesn't matter
+  send(clientSocket,&serverIP,sizeof(serverIP),0);
+
+  //check if the server is lock or not
+  int lock;
+  recv(clientSocket,&lock,sizeof(lock),0);
+  if (lock == 0) {
+    //login into the server as root
+    send(clientSocket,ROOT,strlen(ROOT),0);
+
+    //check the account if exist
+    char userExist;
+    recv(clientSocket,&userExist,sizeof(userExist),0);
+
+    recv(clientSocket, buffer, BUFFER_LEN, 0);
+    //printf("%s\n", buffer);
+    memset(buffer, 0, BUFFER_LEN);
+
+    //send root's password
+    send(clientSocket,ROOT_PASSWORD,strlen(ROOT_PASSWORD),0);
+
+    char pass;
+    recv(clientSocket, &pass, sizeof(pass), 0);
+
+
+    //OPTION 1: ADD USER
+    //OPTION 2: WRITE
+    //OPTION 3: DELETE
+
+    int option = 2;
+    send(clientSocket, &option, sizeof(option), 0);
+
+    int messageGet;
+    recv(clientSocket, &messageGet, sizeof(messageGet),0);
+
+     //send write information
+    char writeFilePath[FILE_LEN];
+    bzero(writeFilePath,FILE_LEN);
+    //get the path of write file
+    strcat(writeFilePath,DATA_PATH);
+    strcat(writeFilePath,WRITE);
+    strcat(writeFilePath,filename);
+
+    //read buffer from the file
+    FILE *fin;
+    fin = fopen(writeFilePath,"r");
+
+    char lineWrite[BUFFER_LEN];
+    bzero(lineWrite,BUFFER_LEN);
+    while (fgets(lineWrite,sizeof(lineWrite),fin)) {
+      strcat(buffer,lineWrite);
+      bzero(lineWrite,BUFFER_LEN);
+    }
+    //send user name
+    send(clientSocket, username, strlen(username), 0);
+
+    recv(clientSocket, &messageGet, sizeof(messageGet),0);
+
+    //send wirte information
+    send(clientSocket, buffer, strlen(buffer), 0);
+
+    recv(clientSocket, &messageGet, sizeof(messageGet),0);
+
+    close(clientSocket);
+    return 1;
+
+  } else {
+    printf("The server is locked right now, please try later!\n");
+  }
+  close(clientSocket);
+  return 1;
+}
+
+int sendDeleteFile(char* IP, char* username, char* filename) {
+  //it works as client side
+  int clientSocket;
+  struct sockaddr_in serverAddr;
+  char buffer[BUFFER_LEN];
+  memset(buffer, 0, sizeof(buffer));
+
+  if ((clientSocket = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+    printf("\n Socket creation error \n");
+    return -1;
+  }
+  printf("[+]Create socket...\n");
+
+  serverAddr.sin_family = AF_INET;
+  serverAddr.sin_port = htons(PORT);
+
+  printf("IP: %s\n",IP);
+  if (inet_pton(AF_INET, IP, &serverAddr.sin_addr) <= 0){
+    printf("\nInvalid address/ Address not supported \n");
+    return -1;
+  }
+  printf("[+]Convert the SERVER IP...\n");
+
+  if (connect(clientSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
+    printf("\nConnection Failed \n");
+  }
+  printf("[+]Connect to the sever...\n");
+
+  int serverIP = 1; //it doesn't matter
+  send(clientSocket,&serverIP,sizeof(serverIP),0);
+
+  //check if the server is lock or not
+  int lock;
+  recv(clientSocket,&lock,sizeof(lock),0);
+  if (lock == 0) {
+    //login into the server as root
+    send(clientSocket,ROOT,strlen(ROOT),0);
+
+    //check the account if exist
+    char userExist;
+    recv(clientSocket,&userExist,sizeof(userExist),0);
+
+    recv(clientSocket, buffer, BUFFER_LEN, 0);
+    //printf("%s\n", buffer);
+    memset(buffer, 0, BUFFER_LEN);
+
+    //send root's password
+    send(clientSocket,ROOT_PASSWORD,strlen(ROOT_PASSWORD),0);
+
+    char pass;
+    recv(clientSocket, &pass, sizeof(pass), 0);
+
+
+    //OPTION 1: ADD USER
+    //OPTION 2: WRITE
+    //OPTION 3: DELETE
+
+    int option = 3;
+    send(clientSocket, &option, sizeof(option), 0);
+
+    int messageGet;
+    recv(clientSocket, &messageGet, sizeof(messageGet),0);
+
+    //send delete information
+    char delFilePath[FILE_LEN];
+    bzero(delFilePath,FILE_LEN);
+    //get the path of delete file
+    strcat(delFilePath,DATA_PATH);
+    strcat(delFilePath,DELETE);
+    strcat(delFilePath,filename);
+
+    //read buffer from the file
+    FILE *fin;
+    fin = fopen(delFilePath,"r");
+
+    char lineDel[BUFFER_LEN];
+    bzero(lineDel,BUFFER_LEN);
+    while (fgets(lineDel,sizeof(lineDel),fin)) {
+      strcat(buffer,lineDel);
+      bzero(lineDel,BUFFER_LEN);
+    }
+    //send user name
+    send(clientSocket, username, strlen(username), 0);
+
+    recv(clientSocket, &messageGet, sizeof(messageGet),0);
+
+    //send the delete buffer
+    send(clientSocket, buffer, strlen(buffer), 0);
+
+    recv(clientSocket, &messageGet, sizeof(messageGet),0);
+
+    close(clientSocket);
+    return 1;
+
+  } else {
+    printf("The server is locked right now, please try later!\n");
+  }
+  close(clientSocket);
+  return 1;
 }
