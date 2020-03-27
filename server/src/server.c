@@ -887,8 +887,6 @@ void checkWD(int socket, int lockInd, char* username) {
       sendWriteFile(anotherIP,filename);
       exit(1);
     }
-    exit(1);
-    //wait(NULL);
     
     //combine wirte file
     combineWriteFile(filename);
