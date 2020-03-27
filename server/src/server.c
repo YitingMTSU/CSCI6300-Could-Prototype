@@ -880,13 +880,13 @@ void checkWD(int socket, int lockInd, char* username) {
     strcpy(filename,username);
     strcat(filename,"Data.txt");
 
-    int pid = fork();
-    if (pid != 0) {
-      close(socket);
+    //int pid = fork();
+    //if (pid != 0) {
+    //  close(socket);
       printf("filename in checkWD:%s\n",filename);
       sendWriteFile(anotherIP,filename);
-      exit(1);
-    }
+      //  exit(1);
+      //}
     
     //combine wirte file
     combineWriteFile(filename);
@@ -900,9 +900,9 @@ void checkWD(int socket, int lockInd, char* username) {
     // int pid = fork();
     //if (pid != 0) {
     //close(socket);
-      sendDeleteFile(anotherIP,filename);
-      //exit(1);
-      //}
+    sendDeleteFile(anotherIP,filename);
+    //exit(1);
+    //}
     //wait(NULL);
     
     //combine the delete file
