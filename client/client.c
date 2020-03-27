@@ -247,6 +247,8 @@ int mainUsageClient(int socket, char* buffer){
 
   char filename[FILE_LEN];
   int find;
+  int ACK = 1;
+  int fileLock;
   int permission;
   switch (option) {
   case '1': //read file
@@ -268,10 +270,17 @@ int mainUsageClient(int socket, char* buffer){
     //recv the information from the file
     recv(socket,&find,sizeof(find),0);
     if (find == 1) { //find the file, print the information
-      recv(socket,buffer,BUFFER_LEN,0);
-      printf("%s:\n%s\n\n",filename,buffer);
-      bzero(buffer,BUFFER_LEN);
-      sleep(1);
+      //check the file lock
+      recv(socket,&fileLock,sizeof(fileLock),0);
+      send(socket,&(ACK),sizeof(ACK),0);
+      if (fileLock == 0) {
+	recv(socket,buffer,BUFFER_LEN,0);
+	printf("%s:\n%s\n\n",filename,buffer);
+	bzero(buffer,BUFFER_LEN);
+	sleep(1);
+      } else {
+	printf("%s\n\n",interfaceFileLock);
+      }
       mainUsageClient(socket,buffer);
     } else { //didn't find the file, return back to interface
       printf("The file didn't exist!\n");
@@ -302,22 +311,28 @@ int mainUsageClient(int socket, char* buffer){
       //recv the information from the file
       recv(socket,&find,sizeof(find),0);
       if (find == 1) { //find the file, print the information
+	//check the file lock
+	recv(socket,&fileLock,sizeof(fileLock),0);
+	send(socket,&(ACK),sizeof(ACK),0);
+	if (fileLock == 0) {
+	  //read the information of file
+	  recv(socket,buffer,BUFFER_LEN,0);
+	  printf("%s:\n%s\n\n",filename,buffer);
+	  bzero(buffer,BUFFER_LEN);
 	
-	//read the information of file
-	recv(socket,buffer,BUFFER_LEN,0);
-	printf("%s:\n%s\n\n",filename,buffer);
-	bzero(buffer,BUFFER_LEN);
+	  //get the new information you want to wirte
+	  printf("Enter the information you want to write:\n");
+	  fgets(buffer,BUFFER_LEN,stdin);
 	
-	//get the new information you want to wirte
-	printf("Enter the information you want to write:\n");
-	fgets(buffer,BUFFER_LEN,stdin);
-	
-	//send information
-	send(socket,buffer,strlen(buffer),0);
-	printf("[+]New information to write sent.\n");
-	bzero(buffer,BUFFER_LEN);
-	
-	sleep(1);
+	  //send information
+	  send(socket,buffer,strlen(buffer),0);
+	  printf("[+]New information to write sent.\n");
+	  bzero(buffer,BUFFER_LEN);
+	  
+	  sleep(1);
+	} else {
+	  printf("%s\n",interfaceFileLock);
+	}
       } else { //didn't find the file, return back to interface
 	printf("The file didn't exist!\n");
       }
@@ -350,22 +365,29 @@ int mainUsageClient(int socket, char* buffer){
     if (permission == 1) {
       //recv the information from the file
       recv(socket,&find,sizeof(find),0);
-      if (find == 1) { //find the file, print the information	
-	//read the information of file
-	recv(socket,buffer,BUFFER_LEN,0);
-	printf("%s:\n%s\n\n",filename,buffer);
-	bzero(buffer,BUFFER_LEN);
-	
-	//get the new information you want to delete
-	printf("Enter the information you want to delete:\n");
-	fgets(buffer,BUFFER_LEN,stdin);
-	
-	//send information
-	send(socket,buffer,strlen(buffer),0);
-	printf("[+]Information to delete sent.\n");
-	bzero(buffer,strlen(buffer));
-	
-	sleep(1);
+      if (find == 1) { //find the file, print the information
+	//check the file lock
+	recv(socket,&fileLock,sizeof(fileLock),0);
+	send(socket,&(ACK),sizeof(ACK),0);
+	if (fileLock == 0) {
+	  //read the information of file
+	  recv(socket,buffer,BUFFER_LEN,0);
+	  printf("%s:\n%s\n\n",filename,buffer);
+	  bzero(buffer,BUFFER_LEN);
+	  
+	  //get the new information you want to delete
+	  printf("Enter the information you want to delete:\n");
+	  fgets(buffer,BUFFER_LEN,stdin);
+	  
+	  //send information
+	  send(socket,buffer,strlen(buffer),0);
+	  printf("[+]Information to delete sent.\n");
+	  bzero(buffer,strlen(buffer));
+	  
+	  sleep(1);
+	} else {
+	  printf("%s\n",interfaceFileLock);
+	}
       } else { //didn't find the file, return back to interface
 	printf("The file didn't exist!\n");
       }

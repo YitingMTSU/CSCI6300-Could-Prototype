@@ -85,8 +85,11 @@ int checkPermission(char* filename, char* username);
 //set fileLock intially
 void setFileLock();
 
-//get current file lock by username
+//get current file lock index by username
 int getCurLockInd(char* username);
+
+//get current file lock index by filename
+int getCurLockIndByFileName(char* filename);
 
 //check the if write or delete and send if yes
 void checkWD(int socket, int lockInd, char* username);

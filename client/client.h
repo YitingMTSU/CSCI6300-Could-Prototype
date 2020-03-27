@@ -15,6 +15,7 @@
 const char* interfaceFiles = "The following are the files:";
 const char* interfaceChooseFile = "Choose your File";
 const char* interfaceWelcome = "Welcome To Ranger/Herschel Cloud!";
+const char* interfaceFileLock = "The file is locked!";
 const char* interfaceUser = "Please enter your username: ";
 
 

@@ -114,6 +114,8 @@ int main() {
 	  rootSyn(newSocket,buffer);
 	  serverLock = 0;
 	} else { //common users
+	  //check if server synchronizing
+   
 	  int curLockInd = getCurLockInd(userName);
 	  
 	  while (logInS) {
@@ -311,6 +313,8 @@ int mainUsageServer(int socket, char* buffer, char* userName, int lockInd){
 
   char filename[FILE_LEN];
   int find;
+  int ACK;
+  int readInd;
   int permission;
   
   switch (option) {
@@ -322,7 +326,7 @@ int mainUsageServer(int socket, char* buffer, char* userName, int lockInd){
     recv(socket,buffer,BUFFER_LEN,0);
     strcpy(filename,buffer);
     bzero(buffer,strlen(buffer));
-      
+    
     //send the information of the file
     printf("The file %s\n",filename);
     sendFileInfor(socket,filename);
@@ -353,13 +357,17 @@ int mainUsageServer(int socket, char* buffer, char* userName, int lockInd){
       //if find recv and create new tmp file,
       //otherwise return back to main usage interface
       if (find == 1) {
-	//lock the file
-	fileLock[lockInd].lock = 1;
-	fileLock[lockInd].write = 1;
-	//create write file
-	createWriteFile(socket,filename);
-	//sendFileToAnotherServer(anotherIP,filename,WRITE);
-	//combineWriteFile(filename);
+	//check the file lock
+	send(socket, &fileLock[lockInd].lock, sizeof(int), 0);
+	recv(socket, &(ACK), sizeof(ACK), 0);
+
+	if (fileLock[lockInd].lock == 0) {
+	  //lock the file
+	  fileLock[lockInd].lock = 1;
+	  fileLock[lockInd].write = 1;
+	  //create write file
+	  createWriteFile(socket,filename);
+	}
       }
       bzero(filename,strlen(filename));
     }
@@ -390,13 +398,18 @@ int mainUsageServer(int socket, char* buffer, char* userName, int lockInd){
       //if find recv and create new tmp file,
       //otherwise return back to main usage interface
       if (find == 1) {
-	//lock the file
-	fileLock[lockInd].lock = 1;
-        fileLock[lockInd].delete = 1;
-	//create delete file
-	createDeleteFile(socket,filename);
-	//sendFileToAnotherServer(anotherIP,filename,DELETE);
-	//combineDeleteFile(filename);
+	//check the file lock
+	send(socket, &fileLock[lockInd].lock, sizeof(int), 0);
+	recv(socket, &(ACK), sizeof(ACK), 0);
+
+	if (fileLock[lockInd].lock == 0) {
+	  
+	  //lock the file
+	  fileLock[lockInd].lock = 1;
+	  fileLock[lockInd].delete = 1;
+	  //create delete file
+	  createDeleteFile(socket,filename);
+	}
       }
       bzero(filename,strlen(filename));
     }
@@ -482,25 +495,32 @@ int sendFileInfor(int socket, char* filename) {
   closedir(dr);
   printf("find the file or not: %d\n",find);
   send(socket,&find,sizeof(find),0);
+  int ACK;
   if (find == 0) {//didn't find the file
     printf("didn't find the file\n");
     bzero(filename,strlen(filename));
     return -1;
   } else {//find the file, send the information
-    printf("find the file\n");
-    char filenameToRead[BUFFER_LEN];
-    memset(filenameToRead,0,strlen(filenameToRead));
-    //printf("file path:%s\n",filenameToRead);
-    strcat(filenameToRead, DATA_PATH);
-    //printf("file path:%s\n",filenameToRead);
-    strcat(filenameToRead, filename);
-    char buffer[BUFFER_LEN];
-    memset(buffer,0,BUFFER_LEN);
-    //printf("file path:%s\n",filenameToRead);
-    readFile(filenameToRead,buffer);
-    printf("send content: %s\n",buffer);
-    send(socket,buffer,strlen(buffer),0);
-    sleep(1);
+    //check the file lock
+    int lockInd = getCurLockIndByFileName(filename);
+    send(socket,&fileLock[lockInd].lock,sizeof(int),0);
+    recv(socket,&ACK,sizeof(ACK),0);
+    if (fileLock[lockInd].lock == 0) {
+      printf("find the file\n");
+      char filenameToRead[BUFFER_LEN];
+      memset(filenameToRead,0,strlen(filenameToRead));
+      //printf("file path:%s\n",filenameToRead);
+      strcat(filenameToRead, DATA_PATH);
+      //printf("file path:%s\n",filenameToRead);
+      strcat(filenameToRead, filename);
+      char buffer[BUFFER_LEN];
+      memset(buffer,0,BUFFER_LEN);
+      //printf("file path:%s\n",filenameToRead);
+      readFile(filenameToRead,buffer);
+      printf("send content: %s\n",buffer);
+      send(socket,buffer,strlen(buffer),0);
+      sleep(1);
+    }
   }
   return 1;
 }
@@ -863,8 +883,13 @@ int getCurLockInd(char* username) {
   char curFileName[FILE_LEN];
   strcpy(curFileName,username);
   strcat(curFileName,"Data.txt");
+  int ind = getCurLockIndByFileName(curFileName);
+  return ind;
+}
+
+int getCurLockIndByFileName(char* filename) {
   for (int i=0;i<curUser;i++) {
-    if (strcmp(fileLock[i].filename,curFileName) == 0) {
+    if (strcmp(fileLock[i].filename,filename) == 0) {
       return i;
     }
   }
