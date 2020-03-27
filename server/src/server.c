@@ -328,20 +328,24 @@ int mainUsageServer(int socket, char* buffer, char* userName){
     printf("The file %s\n",buffer);
     strcpy(filename,buffer);
     bzero(buffer,strlen(buffer));
-    
-    //send the information of the file 
-    find = sendFileInfor(socket,filename);
 
-    //if find recv and create new tmp file,
-    //otherwise return back to main usage interface
-    if (find == 1) {
-      permission = checkPermission(filename, userName);
-      send(socket, &permission, sizeof(permission), 0);
-      if (permission == 1) createWriteFile(socket,filename);
-      //sendFileToAnotherServer(anotherIP,filename,WRITE);
-      //combineWriteFile(filename);
+    //check the permission
+    permission = checkPermission(filename, userName);
+    send(socket, &permission, sizeof(permission), 0);
+
+    if (permission == 1) {
+      //send the information of the file 
+      find = sendFileInfor(socket,filename);
+      
+      //if find recv and create new tmp file,
+      //otherwise return back to main usage interface
+      if (find == 1) {
+	createWriteFile(socket,filename);
+	//sendFileToAnotherServer(anotherIP,filename,WRITE);
+	//combineWriteFile(filename);
+      }
+      bzero(filename,strlen(filename));
     }
-    bzero(filename,strlen(filename));
     
     //return back to main interface
     printf("come back!\n");
@@ -358,20 +362,23 @@ int mainUsageServer(int socket, char* buffer, char* userName){
     strcpy(filename,buffer);
     bzero(buffer,strlen(buffer));
 
-    //send the information of the file
-    find = sendFileInfor(socket,filename);
+    //check the permission
+    permission = checkPermission(filename, userName);
+    send(socket, &permission, sizeof(permission), 0);
 
-    //if find recv and create new tmp file,
-    //otherwise return back to main usage interface
-    if (find == 1) {
-      permission = checkPermission(filename, userName);
-      send(socket, &permission, sizeof(permission), 0);
-      if (permission == 1) createDeleteFile(socket,filename);
-      //sendFileToAnotherServer(anotherIP,filename,DELETE);
-      //combineDeleteFile(filename);
+    if (permission == 1) {
+      //send the information of the file
+      find = sendFileInfor(socket,filename);
+      
+      //if find recv and create new tmp file,
+      //otherwise return back to main usage interface
+      if (find == 1) {
+	createDeleteFile(socket,filename);
+	//sendFileToAnotherServer(anotherIP,filename,DELETE);
+	//combineDeleteFile(filename);
+      }
+      bzero(filename,strlen(filename));
     }
-    bzero(filename,strlen(filename));
-
     //return back to main interface
     printf("come back!\n");
     mainUsageServer(socket,buffer,userName);
@@ -774,11 +781,13 @@ int checkPermission(char* filename, char* username) {
 
   int len = strlen(username);
   int i;
-
+  printf("filename: %s\n",filename);
+  printf("username: %s\n",username);
   for (i=0;i<len;i++) {
     if (filename[i] != username[i]) break;
   }
-
+  printf("i = %d, len = %d\n",i,len);
+  
   if (i == len) return 1;
   return -1;
 }
