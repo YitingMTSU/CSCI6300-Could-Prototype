@@ -14,6 +14,15 @@
 #define ROOT "root"
 #define ROOT_PASSWORD "12345"
 #define SRC_LEN 4
+#define MAX_USER 100
+
+struct FILELOCK{
+  char filename[FILE_LEN];
+  int lock;
+  int write;
+  int delete;
+};
+
 
 const char* interfaceWelcome = "Welcome To Ranger/Herschel Cloud!";
 const char* interfaceUser = "Please enter your username: ";
@@ -36,7 +45,7 @@ int checkUser(char* userName, char* password);
 void writeNewUserToFile(char* userName, char* password);
 
 //enter into the main menu server side
-int mainUsageServer(int socket, char* buffer, char* userName);
+int mainUsageServer(int socket, char* buffer, char* userName, int lockInd);
 
 //read from a file
 void readFile(char* filename, char* buffer);
@@ -72,6 +81,21 @@ void getPath();
 //user call read all the data file
 //but only can write/delete for its own file
 int checkPermission(char* filename, char* username);
+
+//set fileLock intially
+void setFileLock();
+
+//get current file lock by username
+int getCurLockInd(char* username);
+
+//check the if write or delete and send if yes
+void checkWD(int socket, int lockInd, char* username);
+
+//send the write file to another server
+int sendWriteFile(char* IP, char* username, char* filename);
+
+//send the delete file to another server
+int sendDeleteFile(char* IP, char* username, char* filename);
 
 #endif
 
