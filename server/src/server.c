@@ -777,9 +777,7 @@ void rootSyn(int socket, char* buffer) {
     combineWriteFile(fileName);
     break;
   case 3: // synchronize the delete file
-    recv(socket, userName, USERNAME_LEN, 0);
-    strcpy(fileName,userName);
-    strcat(fileName,"Data.txt");
+    recv(socket, fileName, FILE_LEN, 0);
     send(socket, &messageGet, sizeof(messageGet), 0);
     //recv(socket, buffer, BUFFER_LEN, 0);
     createDeleteFile(socket,fileName);
