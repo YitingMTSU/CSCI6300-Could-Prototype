@@ -9,6 +9,8 @@
 #include <unistd.h>
 #include "client.h" //the client header file
 
+int ACK;
+
 int main() {
 
   int clientSocket;
@@ -92,57 +94,37 @@ int main() {
 
 
 int login(int socket, char* buffer) {
-  //read the interface from server
-  //int sig;
-  //int messageLen;
-  //recv(socket, &messageLen, sizeof(messageLen), 0);
-  //printf("the messagelen : %d\n",messageLen);
-  //sig = recv(socket, buffer, messageLen, 0);
-  //recv(socket, buffer, BUFFER_LEN, 0);
+  
   printf("%s\n",interfaceWelcome);
-  //bzero(buffer, BUFFER_LEN);
-  //sleep(0.5);
   
-  //recv(socket, &messageLen, sizeof(messageLen), 0);
-  //recv(socket, buffer, BUFFER_LEN, 0);
   printf("%s",interfaceUser);
-  //memset(buffer, 0, BUFFER_LEN);
-  
+    
   //get user name
   char userName[USERNAME_LEN];
   memset(userName,0,USERNAME_LEN);
-  //int count = 0;
+  //send the username to server
   fgets(userName,USERNAME_LEN,stdin);
   userName[strlen(userName)-1] = 0; //otherwise \n at the end  
   send(socket,userName,strlen(userName),0);
 
-
   //check the account if exist
-  char userExist;
+  int userExist;
   recv(socket,&userExist,sizeof(userExist),0);
-  //printf("userExist: %c\n",userExist);
-  //memset(&buffer, '0', sizeof(buffer));
-
   
-  if (userExist == '0') { //didn't find the user
-    recv(socket,buffer,BUFFER_LEN,0);
-    printf("%s\n",buffer);
-    memset(buffer, 0, BUFFER_LEN);
+  if (userExist == -1) { //didn't find the user    
+    printf("%s\n",interfaceNewUser);
+ 
     char option; //select option create interface or quit
-    echo(false);
     char input[5];
     fgets(input,5,stdin);
     option = input[0];
-    //printf("The option you choose %c\n",option);
     send(socket, &option, sizeof(option), 0);
+    recv(socket, &ACK, sizeof(ACK), 0);
+    
     if (option == '1') { //create the account and enter the password
-      //printf("here");
-      //receive the first password
-      echo(true);
-      //printf("bfeore receive buffer %s\n",buffer);
-      recv(socket, buffer, BUFFER_LEN, 0);
-      printf("%s ",buffer);
-      memset(buffer, 0, BUFFER_LEN);
+      printf("%s ",interfacePassword);
+
+      //get the first password
       char passwordFirst[PASSWORD_LEN];
       memset(passwordFirst, 0, PASSWORD_LEN);
       echo(false);
@@ -150,13 +132,10 @@ int login(int socket, char* buffer) {
       passwordFirst[strlen(passwordFirst) - 1] = 0;
       echo(true);
       send(socket, passwordFirst, strlen(passwordFirst), 0);
-      printf("\n");
-
+      recv(socket, &ACK, sizeof(ACK), 0);
       
-      //receive the second password
-      recv(socket, buffer, BUFFER_LEN, 0);
-      printf("%s\n", buffer);
-      memset(buffer,0,BUFFER_LEN);
+      //get the second password
+      printf("%s\n", interfaceReEnterPassword);
       char passwordSecond[PASSWORD_LEN];
       memset(passwordSecond, 0, PASSWORD_LEN);
       echo(false);
@@ -165,31 +144,31 @@ int login(int socket, char* buffer) {
       echo(true);
       send(socket, passwordSecond, strlen(passwordSecond), 0);
 
+      //reveive if create the user success
       char create;
       recv(socket, &create, sizeof(create), 0);
-      if (create == '0') { //create unsucessful
-	printf("The password doesn't match. Exit.\n");
-	exit(1);
-      } else { //create sucessful
+      
+      if (create == '1') { //create successful
 	printf("Create the new account: %s\n",userName);
 	return 1;
+      } else { //create unsuccessful
+	printf("The password doesn't match. Exit.\n");
+	close(socket);
+	exit(1);
       }
       
       
-    } else {
-      echo(true);
-      recv(socket, buffer, BUFFER_LEN, 0);
-      printf("%s\n",buffer);
-      memset(buffer, 0, BUFFER_LEN);
+    } else { //quit the server
+      printf("%s\n",interfaceBye);
+      close(socket);
       exit(1);//select quit
     }
   } else { //find the user, next input the password
     int count = 1;
   INPUTPASSWORD:
-    recv(socket, buffer, BUFFER_LEN, 0);
-    printf("%s\n", buffer);
-    memset(buffer, 0, BUFFER_LEN);
-    
+    printf("%s\n", interfacePassword);
+
+    //get the password
     echo(false);
     char password[PASSWORD_LEN];
     fgets(password,PASSWORD_LEN,stdin);
@@ -201,13 +180,14 @@ int login(int socket, char* buffer) {
     recv(socket, &pass, sizeof(pass), 0);
     
     if (pass == '0') {
-      recv(socket,buffer,BUFFER_LEN,0);
-      printf("%s\n",buffer);
-      memset(buffer, 0, strlen(buffer));
-      if(count == 3) exit(1);
+      printf("%s\n", interfacePasswordError);
+      if (count == 3) {//try 3 times
+	printf("%s\n",interfaceBye);
+	close(socket);
+	exit(1);
+      }
       count++;
       goto INPUTPASSWORD;
-      exit(1);
     } else {
       return 1;
     }
@@ -227,11 +207,9 @@ void echo(bool on) {
 }
 
 int mainUsageClient(int socket, char* buffer){
-  recv(socket, buffer, BUFFER_LEN, 0);
-  printf("%s\n",buffer);
-  bzero(buffer,BUFFER_LEN);
-  recv(socket, buffer, BUFFER_LEN, 0);
-  printf("%s",buffer);
+  //print the interface
+  printf("%s\n", interfaceUsage);
+  printf("%s", interfaceOption);
   char input[5];
   char option;
  RECHOOSE:
@@ -239,17 +217,16 @@ int mainUsageClient(int socket, char* buffer){
   option = input[0];
   if (option - '1' < 0 || option - '1' > 3) {
     printf("Error input!\n");
-    printf("%s",buffer);
+    printf("%s",interfaceOption);
     goto RECHOOSE;
   }
-  bzero(buffer,BUFFER_LEN);
   send(socket,&option,sizeof(option),0);
 
   char filename[FILE_LEN];
   int find;
-  int ACK = 1;
   int fileLock;
   int permission;
+  
   switch (option) {
   case '1': //read file
     //receive the list of files
@@ -266,30 +243,28 @@ int mainUsageClient(int socket, char* buffer){
     //send the file name
     printf("filename:%s\n",filename);
     send(socket,filename,strlen(filename),0);
-    
-    //recv the information from the file
+
+    //recv the file if find or not
     recv(socket,&find,sizeof(find),0);
     if (find == 1) { //find the file, print the information
       //check the file lock
-      recv(socket,&fileLock,sizeof(fileLock),0);
       send(socket,&(ACK),sizeof(ACK),0);
+      recv(socket,&fileLock,sizeof(fileLock),0);
       if (fileLock == 0) {
+	send(socket,&(ACK),sizeof(ACK),0);
 	recv(socket,buffer,BUFFER_LEN,0);
 	printf("%s:\n%s\n\n",filename,buffer);
 	bzero(buffer,BUFFER_LEN);
-	sleep(1);
       } else {
 	printf("%s\n\n",interfaceFileLock);
       }
       mainUsageClient(socket,buffer);
     } else { //didn't find the file, return back to interface
-      printf("The file didn't exist!\n");
-      
+      printf("The file didn't exist!\n");      
       mainUsageClient(socket,buffer);
     }
     break;
   case '2': //write information
-
     //receive the list of files
     printf("%s\n",interfaceFiles);
     recv(socket,buffer,BUFFER_LEN,0);
@@ -308,13 +283,19 @@ int mainUsageClient(int socket, char* buffer){
     recv(socket,&permission,sizeof(permission),0);
 
     if (permission == 1) {
+      send(socket, &(ACK), sizeof(ACK), 0);
+
       //recv the information from the file
       recv(socket,&find,sizeof(find),0);
+
       if (find == 1) { //find the file, print the information
+	send(socket, &(ACK), sizeof(ACK), 0);
 	//check the file lock
 	recv(socket,&fileLock,sizeof(fileLock),0);
-	send(socket,&(ACK),sizeof(ACK),0);
+	
 	if (fileLock == 0) {
+	  send(socket, &(ACK), sizeof(ACK), 0);
+	  
 	  //read the information of file
 	  recv(socket,buffer,BUFFER_LEN,0);
 	  printf("%s:\n%s\n\n",filename,buffer);
@@ -328,8 +309,7 @@ int mainUsageClient(int socket, char* buffer){
 	  send(socket,buffer,strlen(buffer),0);
 	  printf("[+]New information to write sent.\n");
 	  bzero(buffer,BUFFER_LEN);
-	  
-	  sleep(1);
+	  recv(socket, &ACK, sizeof(ACK), 0);
 	} else {
 	  printf("%s\n",interfaceFileLock);
 	}
@@ -358,18 +338,24 @@ int mainUsageClient(int socket, char* buffer){
     //send the file name the user want to delete information
     send(socket,filename,strlen(filename),0);
 
-
     //receive the permission
     recv(socket,&permission,sizeof(permission),0);
 
     if (permission == 1) {
+      send(socket, &ACK, sizeof(ACK), 0);
+
       //recv the information from the file
       recv(socket,&find,sizeof(find),0);
+      
       if (find == 1) { //find the file, print the information
+	send(socket, &ACK, sizeof(ACK), 0);
+	
 	//check the file lock
 	recv(socket,&fileLock,sizeof(fileLock),0);
-	send(socket,&(ACK),sizeof(ACK),0);
+	
 	if (fileLock == 0) {
+	  send(socket, &ACK, sizeof(ACK), 0);
+	  
 	  //read the information of file
 	  recv(socket,buffer,BUFFER_LEN,0);
 	  printf("%s:\n%s\n\n",filename,buffer);
@@ -383,8 +369,7 @@ int mainUsageClient(int socket, char* buffer){
 	  send(socket,buffer,strlen(buffer),0);
 	  printf("[+]Information to delete sent.\n");
 	  bzero(buffer,strlen(buffer));
-	  
-	  sleep(1);
+	  recv(socket, &ACK, sizeof(ACK), 0);
 	} else {
 	  printf("%s\n",interfaceFileLock);
 	}
@@ -398,10 +383,8 @@ int mainUsageClient(int socket, char* buffer){
     }
     break;
   case '4': //quit the system
-    recv(socket,buffer,BUFFER_LEN,0);
-    printf("%s\n",buffer);
-    bzero(buffer,BUFFER_LEN);
-    exit(1);
+    printf("%s\n", interfaceBye);
+    return 1;
     break;
   default:
     return 1;

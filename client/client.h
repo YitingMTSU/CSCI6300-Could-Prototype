@@ -12,11 +12,19 @@
 #define PASSWORD_LEN 50
 #define FILE_LEN 300
 
+const char* interfaceLock = "The server is locked right now, please try later!";
 const char* interfaceFiles = "The following are the files:";
 const char* interfaceChooseFile = "Choose your File";
 const char* interfaceWelcome = "Welcome To Ranger/Herschel Cloud!";
 const char* interfaceFileLock = "The file is locked!";
 const char* interfaceUser = "Please enter your username: ";
+const char* interfacePassword = "Password:";
+const char* interfaceUsage = "Enter The Option You Want: \n1. Read Files\t\t2. Write Information\n3. Delete information   4. EXIT";
+const char* interfaceNewUser = "The account doesn't exist. Do you want to create it?\n1. Yes    2. Quit";
+const char* interfaceReEnterPassword = "Re-Enter Password:";
+const char* interfaceBye = "Bye!";
+const char* interfacePasswordError = "The password error.";
+const char* interfaceOption = "Please Enter Your Option: ";
 
 
 

@@ -23,18 +23,6 @@ struct FILELOCK{
   int delete;
 };
 
-
-const char* interfaceWelcome = "Welcome To Ranger/Herschel Cloud!";
-const char* interfaceUser = "Please enter your username: ";
-const char* interfacePassword = "Password:";
-const char* interfaceUsage = "Enter The Option You Want: \n1. Read Files         2. Write Information\n3. Delete information 4. EXIT";
-const char* interfaceNewUser = "The account doesn't exist. Do you want to create it?\n1. Yes    2. Quit";
-const char* interfaceReEnterPassword = "Re-Enter Password:";
-const char* interfaceBye = "Bye!";
-const char* interfacePasswordError = "The password error.";
-const char* interfaceOption = "Please Enter Your Option: ";
-
-
 //log into the account
 int login(int socket, char* buffer, char* userName);
 
@@ -53,14 +41,14 @@ void readFile(char* filename, char* buffer);
 //show all files in data directory
 void showFiles(int socket, char* buffer);
 
-//send the information of the file to the user
-int sendFileInfor(int socket, char* filename);
+//check if find the file and get the file inforamtion
+int findFile(int socket, char* filename, char* fileInfor);
 
 //create tmp write file
-void createWriteFile(int socket, char* filename);
+void createWriteFile(int socket, char* filename, char* fileInfo);
 
 //create tmp delete file
-void createDeleteFile(int socket, char* filename);
+void createDeleteFile(int socket, char* filename, char* fileInfo);
 
 //combine the write file and original data file
 void combineWriteFile(char* filename);
