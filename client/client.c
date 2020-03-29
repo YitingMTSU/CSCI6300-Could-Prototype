@@ -135,7 +135,7 @@ int login(int socket, char* buffer) {
       recv(socket, &ACK, sizeof(ACK), 0);
       
       //get the second password
-      printf("%s\n", interfaceReEnterPassword);
+      printf("\n%s", interfaceReEnterPassword);
       char passwordSecond[PASSWORD_LEN];
       memset(passwordSecond, 0, PASSWORD_LEN);
       echo(false);

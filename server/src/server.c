@@ -219,6 +219,7 @@ int login(int socket, char* buffer, char* userName) {
 	fileLock[curUser].lock = 0;
 	fileLock[curUser].write = 0;
 	fileLock[curUser].delete = 0;
+	curUser++;
 	
 	//send the information to another server
 	sendUserToAnotherServer(anotherIP,userName,passwordFirst);
