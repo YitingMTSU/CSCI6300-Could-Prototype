@@ -212,6 +212,13 @@ int login(int socket, char* buffer, char* userName) {
       if (create == '1') {
 	//write new user information to file
 	writeNewUserToFile(userName,passwordFirst);
+
+	//add the new user to filelock
+	strcpy(fileLock[curUser].filename, userName);
+	strcat(fileLock[curUser].filename,"Data.txt");
+	fileLock[curUser].lock = 0;
+	fileLock[curUser].write = 0;
+	fileLock[curUser].delete = 0;
 	
 	int inerpid = fork();
 	if(inerpid == 0){
