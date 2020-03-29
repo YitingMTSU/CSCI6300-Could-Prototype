@@ -791,6 +791,14 @@ void rootSyn(int socket, char* buffer) {
     recv(socket, password, PASSWORD_LEN, 0);
     send(socket, &ACK, sizeof(ACK), 0);
 
+    //add the new user to filelock
+    strcpy(fileLock[curUser].filename, userName);
+    strcat(fileLock[curUser].filename,"Data.txt");
+    fileLock[curUser].lock = 0;
+    fileLock[curUser].write = 0;
+    fileLock[curUser].delete = 0;
+    curUser++;
+    
     writeNewUserToFile(userName,password);
     break;
   case 2: // synchronize the write file
