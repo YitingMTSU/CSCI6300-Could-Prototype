@@ -220,13 +220,9 @@ int login(int socket, char* buffer, char* userName) {
 	fileLock[curUser].write = 0;
 	fileLock[curUser].delete = 0;
 	
-	int inerpid = fork();
-	if(inerpid == 0){
-	  close(socket);
-	  //send the information to another server
-	  sendUserToAnotherServer(anotherIP,userName,passwordFirst);
-	  exit(1);
-	}
+	//send the information to another server
+	sendUserToAnotherServer(anotherIP,userName,passwordFirst);
+	
 	return 1;
       } else {//the password didn't match
 	return 0;
