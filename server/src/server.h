@@ -8,7 +8,7 @@
 #define SERVER_RANGER_IP "161.45.162.69"
 #define USERNAME_LEN 20
 #define PASSWORD_LEN 50
-#define FILE_LEN 300
+#define FILE_LEN 256
 #define WRITE "write"
 #define DELETE "delete"
 #define ROOT "root"

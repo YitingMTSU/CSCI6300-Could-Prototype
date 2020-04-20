@@ -302,6 +302,8 @@ int mainUsageServer(int socket, char* buffer, char* userName, int lockInd){
   bzero(fileInfo, BUFFER_LEN);
   int find;
   int readInd;
+  int writeInd;
+  int delInd;
   int permission;
   
   switch (option) {
@@ -324,6 +326,7 @@ int mainUsageServer(int socket, char* buffer, char* userName, int lockInd){
 
       //check the file lock
       readInd = getCurLockIndByFileName(filename);
+      printf("readInd: %d, readfile:%s,lock: %d\n",readInd,fileLock[readInd].filename, fileLock[readInd].lock);
       send(socket, &fileLock[readInd].lock, sizeof(int), 0);
 
       //send the file information if file not lock
@@ -478,52 +481,27 @@ void readFile(char* filename, char* buffer){
 }
 
 void showFiles(int socket, char* buffer){
-  struct dirent *de;
-  DIR *dr = opendir(DATA_PATH);
 
-  if (dr == NULL) {
-    printf("Could not open curent directory\n");
-    exit(1);
+  for(int i=0;i<curUser;i++) {
+    char str[FILE_LEN];
+    sprintf(str,"%d. %s\n", i+1,fileLock[i].filename);
+    strcat(buffer,str);
   }
   
-  int count = 1;
-  // for readdir()
-  while ((de = readdir(dr)) != NULL) {
-    if(strcmp(de->d_name,"..")==0 || strcmp(de->d_name,".")==0) continue;
-    char str[FILE_LEN];
-    //memset(str,0,FILE_LEN);
-    sprintf(str,"%d. %s\n", count,de->d_name);
-    strcat(buffer,str);
-    count++;
-  }
-
-  closedir(dr);
-  //printf("files:%s\n",buffer);
   send(socket,buffer,BUFFER_LEN,0);
   bzero(buffer,BUFFER_LEN);
 }
 
 
 int findFile(int socket, char* filename, char* fileInfo) {
-  struct dirent *de;
-  DIR *dr = opendir(DATA_PATH);
-
-  if (dr == NULL) {
-    printf("Could not open curent directory\n");
-    exit(1);
-  }
-
   int find = -1;
  
-  while ((de = readdir(dr)) != NULL) {
-    if(strcmp(de->d_name,"..") == 0 || strcmp(de->d_name,".")==0) continue;
-    if (strcmp(de->d_name,filename) == 0) {
+  for(int i=0;i<curUser;i++){
+    if(strcmp(fileLock[i].filename,filename) == 0){
       find = 1;
       break;
     }
   }
-
-  closedir(dr);
 
   //send if the file find or not
   printf("find the file or not: %d\n",find);
