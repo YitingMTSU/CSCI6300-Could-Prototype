@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <sys/mman.h>
+#include <sys/wait.h>
 #include <limits.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -10,7 +12,6 @@
 #include <dirent.h>
 #include "server.h" //the server header file
 
-
 //global variables
 char anotherIP[IP_LEN];
 int serverLock = 0;
@@ -19,14 +20,17 @@ char DATA_PATH[PATH_MAX];
 struct FILELOCK fileLock[MAX_USER];
 int curUser = 0;
 int ACK = 0;
+static int* fileRLock;
 
 int main() {
-
+  
   //get tmp path and set ACCOUNT_PATH DATA_PATH
   getPath();
 
   //initial the fileLock
   setFileLock();
+  int* fileRLock = mmap(NULL, curUser*sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED| MAP_ANONYMOUS,-1,0);
+
   
   int sockfd, newSocket;
   struct sockaddr_in serverAddr;
@@ -132,7 +136,8 @@ int main() {
       close(newSocket);
     }//end if
   }//end while
-    
+
+  munmap(fileRLock, curUser*sizeof(int));
   return 0;
 }
 
@@ -219,6 +224,7 @@ int login(int socket, char* buffer, char* userName) {
 	fileLock[curUser].lock = 0;
 	fileLock[curUser].write = 0;
 	fileLock[curUser].delete = 0;
+	fileRLock[curUser] = 0;
 	curUser++;
 	
 	//send the information to another server
@@ -302,8 +308,6 @@ int mainUsageServer(int socket, char* buffer, char* userName, int lockInd){
   bzero(fileInfo, BUFFER_LEN);
   int find;
   int readInd;
-  int writeInd;
-  int delInd;
   int permission;
   
   switch (option) {
@@ -326,11 +330,11 @@ int mainUsageServer(int socket, char* buffer, char* userName, int lockInd){
 
       //check the file lock
       readInd = getCurLockIndByFileName(filename);
-      printf("readInd: %d, readfile:%s,lock: %d\n",readInd,fileLock[readInd].filename, fileLock[readInd].lock);
-      send(socket, &fileLock[readInd].lock, sizeof(int), 0);
+      printf("readInd: %d, readfile:%s,lock: %d\n",readInd,fileLock[readInd].filename, fileRLock[readInd]);
+      send(socket, &fileRLock[readInd], sizeof(int), 0);
 
       //send the file information if file not lock
-      if (fileLock[readInd].lock == 0) {
+      if (fileRLock[readInd] == 0) {
 	recv(socket, &ACK, sizeof(ACK), 0);
 	send(socket, fileInfo, strlen(fileInfo), 0);
       }
@@ -380,6 +384,7 @@ int mainUsageServer(int socket, char* buffer, char* userName, int lockInd){
 	  //lock the file
 	  fileLock[lockInd].lock = 1;
 	  fileLock[lockInd].write = 1;
+	  fileRLock[lockInd] = 1;
 
 	  //receive the new information
 	  recv(socket, buffer, BUFFER_LEN, 0);
@@ -436,6 +441,7 @@ int mainUsageServer(int socket, char* buffer, char* userName, int lockInd){
 	  //lock the file
 	  fileLock[lockInd].lock = 1;
 	  fileLock[lockInd].delete = 1;
+	  fileRLock[lockInd] = 1;
 
 	  //receive the new (delete) information
 	  recv(socket, buffer, BUFFER_LEN, 0);
@@ -938,7 +944,7 @@ void checkWD(int socket, int lockInd, char* username) {
   fileLock[lockInd].lock = 0;
   fileLock[lockInd].write = 0;
   fileLock[lockInd].delete = 0;
-   
+  fileRLock[lockInd] = 0; 
 }
 
 int sendWriteFile(char* IP, char* filename) {
