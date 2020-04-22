@@ -20,7 +20,6 @@ char DATA_PATH[PATH_MAX];
 struct FILELOCK fileLock[MAX_USER];
 int curUser = 0;
 int ACK = 0;
-static int* fileRLock;
 
 int main() {
   
@@ -29,8 +28,6 @@ int main() {
 
   //initial the fileLock
   setFileLock();
-  int* fileRLock = mmap(NULL, curUser*sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED| MAP_ANONYMOUS,-1,0);
-
   
   int sockfd, newSocket;
   struct sockaddr_in serverAddr;
