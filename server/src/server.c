@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/mman.h>
+#include <sys/shm.h>
 #include <sys/wait.h>
 #include <limits.h>
 #include <string.h>
@@ -17,21 +18,32 @@ char anotherIP[IP_LEN];
 int serverLock = 0;
 char ACCOUNT_PATH[PATH_MAX];
 char DATA_PATH[PATH_MAX];
-struct FILELOCK fileLock[MAX_USER];
-int curUser = 0;
+struct fileLockV{
+  int curUser;
+  struct FILELOCK fileLockVec[MAX_USER];
+};
+struct fileLockV* fileLock;
 int ACK = 0;
-static int* fileRLock;
+int SHM_KEY = 12345;
 
 int main() {
-  
   //get tmp path and set ACCOUNT_PATH DATA_PATH
   getPath();
 
-  //initial the fileLock
-  setFileLock();
-  int* fileRLock = mmap(NULL, curUser*sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED| MAP_ANONYMOUS,-1,0);
+  {//create shared memory and ssave the filelock vector
+    //define shmem memory
+    int shmidLock;
+    shmidLock = shmget(SHM_KEY, sizeof(struct fileLockV), 0644| IPC_CREAT);
 
+    //attach to the segment to get a pointer to it
+    fileLock = shmat(shmidLock, NULL, 0);
   
+    //initial the fileLock
+    setFileLock();
+    
+    shmdt(fileLock);
+  }
+
   int sockfd, newSocket;
   struct sockaddr_in serverAddr;
   int opt = 1;
@@ -50,27 +62,21 @@ int main() {
 
   memset(&serverAddr, 0, sizeof(serverAddr));
 
-
   // Forcefully attaching socket to the port 3303 
-  if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,
-		 &opt, sizeof(opt))) { 
+  if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) { 
     perror("setsockopt"); 
     exit(EXIT_FAILURE); 
   } 
     
-
-  
   serverAddr.sin_family = AF_INET;
   serverAddr.sin_port = htons(PORT);
   serverAddr.sin_addr.s_addr = INADDR_ANY;
 
   //attaching socket to the port
-  if (bind(sockfd, (struct sockaddr*)&serverAddr,
-	   sizeof(serverAddr)) < 0) {
+  if (bind(sockfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
     perror("bind failed");
     exit(EXIT_FAILURE);
   }
-
   
   if (listen(sockfd,5) < 0) {
     perror("listen");
@@ -81,8 +87,7 @@ int main() {
   int pid;
   //start accept the connection
   while (1) {
-    if ((newSocket = accept(sockfd, (struct sockaddr*)& newAddr,
-			    &addr_size)) < 0) {
+    if ((newSocket = accept(sockfd, (struct sockaddr*)& newAddr, &addr_size)) < 0) {
       perror("accept");
       exit(EXIT_FAILURE);
     }
@@ -98,46 +103,43 @@ int main() {
       recv(newSocket,&serverIP,sizeof(serverIP),0);
       
       if (serverIP == 1) {
-	strcpy(anotherIP,SERVER_RANGER_IP);
+	      strcpy(anotherIP,SERVER_RANGER_IP);
       } else {
-	strcpy(anotherIP,SERVER_HERSCHEL_IP);
+	      strcpy(anotherIP,SERVER_HERSCHEL_IP);
       }
       printf("another IP: %s\n",anotherIP);
       
+      //check if server synchronizing
       send(newSocket,&serverLock,sizeof(serverLock),0);
       
       if (serverLock == 0){
-	char userName[USERNAME_LEN]; 
-	int logInS = login(newSocket,buffer,userName);
-	memset(buffer, 0, strlen(buffer));
+	      char userName[USERNAME_LEN]; 
+	      int logInS = login(newSocket,buffer,userName);
+	      memset(buffer, 0, strlen(buffer));
 
-	//print the username to check
-	printf("usernama: %s\n",userName);
-	if (strcmp(userName,"root") == 0) {
-	  serverLock = 1;
-	  rootSyn(newSocket,buffer);
-	  serverLock = 0;
-	} else { //common users
-	  //check if server synchronizing
-   
-	  int curLockInd = getCurLockInd(userName);
-	  
-	  while (logInS) {
-	    int quit = mainUsageServer(newSocket, buffer,userName, curLockInd);
-	    if (quit == 1) break;
-	  }//end while
-	}
-	close(newSocket);
+	      //print the username to check
+	      printf("usernama: %s\n",userName);
+	      if (strcmp(userName,"root") == 0) {
+	        serverLock = 1;
+	        rootSyn(newSocket,buffer);
+	        serverLock = 0;
+	      } else { //common users
+	           	  
+	        while (logInS) {
+	          int quit = mainUsageServer(newSocket, buffer,userName);
+	          if (quit == 1) break;
+	        }//end while
+	      }
+	      close(newSocket);
       } else {
-	close(newSocket);
+	      close(newSocket);
       }
       
     } else { //parent process
       close(newSocket);
     }//end if
   }//end while
-
-  munmap(fileRLock, curUser*sizeof(int));
+  
   return 0;
 }
 
@@ -206,31 +208,25 @@ int login(int socket, char* buffer, char* userName) {
       //compare the password
       char create;
       if (strcmp(passwordFirst, passwordSecond) == 0) {
-	create = '1';
+	      create = '1';
       } else {
-	create = '0';
+	      create = '0';
       }
 
       //send if create the new user
       send(socket, &create, sizeof(create), 0);
 
       if (create == '1') {
-	//write new user information to file
-	writeNewUserToFile(userName,passwordFirst);
+	      //write new user information to file
+	      writeNewUserToFile(userName,passwordFirst);
 
-	//add the new user to filelock
-	strcpy(fileLock[curUser].filename, userName);
-	strcat(fileLock[curUser].filename,"Data.txt");
-	fileLock[curUser].lock = 0;
-	fileLock[curUser].write = 0;
-	fileLock[curUser].delete = 0;
-	fileRLock[curUser] = 0;
-	curUser++;
+        //add the new user to filelock
+        addNewUserToSHM(userName);
+
+	      //send the information to another server
+	      sendUserToAnotherServer(anotherIP,userName,passwordFirst);
 	
-	//send the information to another server
-	sendUserToAnotherServer(anotherIP,userName,passwordFirst);
-	
-	return 1;
+	      return 1;
       } else {//the password didn't match
 	return 0;
       }           
@@ -297,7 +293,7 @@ void writeNewUserToFile(char* userName, char* password) {
   return;  
 }
 
-int mainUsageServer(int socket, char* buffer, char* userName, int lockInd){
+int mainUsageServer(int socket, char* buffer, char* userName){
   //receive the option user choose
   char option;
   recv(socket, &option, sizeof(option), 0);
@@ -329,14 +325,14 @@ int mainUsageServer(int socket, char* buffer, char* userName, int lockInd){
       recv(socket, &ACK, sizeof(ACK), 0);
 
       //check the file lock
-      readInd = getCurLockIndByFileName(filename);
-      printf("readInd: %d, readfile:%s,lock: %d\n",readInd,fileLock[readInd].filename, fileRLock[readInd]);
-      send(socket, &fileRLock[readInd], sizeof(int), 0);
-
+      int curFileLock = getCurLockByFileName(filename);
+        
+      send(socket, &curFileLock, sizeof(int), 0);
+      
       //send the file information if file not lock
-      if (fileRLock[readInd] == 0) {
-	recv(socket, &ACK, sizeof(ACK), 0);
-	send(socket, fileInfo, strlen(fileInfo), 0);
+      if (curFileLock == 0) {
+	      recv(socket, &ACK, sizeof(ACK), 0);
+	      send(socket, fileInfo, strlen(fileInfo), 0);
       }
     }
 
@@ -346,7 +342,7 @@ int mainUsageServer(int socket, char* buffer, char* userName, int lockInd){
     
     //return back to main interface
     printf("come back!\n");
-    mainUsageServer(socket,buffer,userName,lockInd);
+    mainUsageServer(socket,buffer,userName);
     break;
   case '2': //wirte information
     //send the list of files
@@ -371,36 +367,37 @@ int mainUsageServer(int socket, char* buffer, char* userName, int lockInd){
       //if find recv and create new tmp file,
       //otherwise return back to main usage interface
       if (find == 1) {
-	recv(socket, &(ACK), sizeof(ACK), 0);
-	//check the file lock
-	send(socket, &fileLock[lockInd].lock, sizeof(int), 0);
+	      recv(socket, &(ACK), sizeof(ACK), 0);
 
-	if (fileLock[lockInd].lock == 0) {
-	  recv(socket, &(ACK), sizeof(ACK), 0);
+	      //check the file lock
+        int curFileLock = getCurLockByFileName(filename);
+        
+	      send(socket, &curFileLock, sizeof(int), 0);
 
-	  //send the file information
-	  send(socket, fileInfo, strlen(fileInfo), 0);
+	      if (curFileLock == 0) {
+	        recv(socket, &(ACK), sizeof(ACK), 0);
+
+	        //send the file information
+	        send(socket, fileInfo, strlen(fileInfo), 0);
 	  
-	  //lock the file
-	  fileLock[lockInd].lock = 1;
-	  fileLock[lockInd].write = 1;
-	  fileRLock[lockInd] = 1;
+	        //lock the file
+          lockWSHM(filename);
 
-	  //receive the new information
-	  recv(socket, buffer, BUFFER_LEN, 0);
+	        //receive the new information
+	        recv(socket, buffer, BUFFER_LEN, 0);
 	  
-	  //create write file
-	  createWriteFile(socket,filename,buffer);
-	  bzero(buffer,strlen(buffer));
-	  send(socket, &ACK, sizeof(ACK), 0);
-	}
+	        //create write file
+	        createWriteFile(socket,filename,buffer);
+	        bzero(buffer,strlen(buffer));
+	        send(socket, &ACK, sizeof(ACK), 0);
+	      }
       }
       bzero(filename,strlen(filename));
     }
     
     //return back to main interface
     printf("come back!\n");
-    mainUsageServer(socket,buffer,userName,lockInd);
+    mainUsageServer(socket,buffer,userName);
     
     break;
   case '3': //delete information
@@ -427,41 +424,40 @@ int mainUsageServer(int socket, char* buffer, char* userName, int lockInd){
       //if find recv and create new tmp file,
       //otherwise return back to main usage interface
       if (find == 1) {
-	recv(socket, &ACK, sizeof(ACK), 0);
+	      recv(socket, &ACK, sizeof(ACK), 0);
 	
-	//check the file lock
-	send(socket, &fileLock[lockInd].lock, sizeof(int), 0);
+	      //check the file lock
+        int curFileLock = getCurLockByFileName(filename);
+	      send(socket, &curFileLock, sizeof(int), 0);
 
-	if (fileLock[lockInd].lock == 0) {
-	  recv(socket, &ACK, sizeof(ACK), 0);
+	      if (curFileLock == 0) {
+	        recv(socket, &ACK, sizeof(ACK), 0);
 
-	  //send the file information
-	  send(socket, fileInfo, strlen(fileInfo), 0);
+	        //send the file information
+	        send(socket, fileInfo, strlen(fileInfo), 0);
 	  
-	  //lock the file
-	  fileLock[lockInd].lock = 1;
-	  fileLock[lockInd].delete = 1;
-	  fileRLock[lockInd] = 1;
+	        //lock the file
+	        lockDSHM(filename);
 
-	  //receive the new (delete) information
-	  recv(socket, buffer, BUFFER_LEN, 0);
+	        //receive the new (delete) information
+	        recv(socket, buffer, BUFFER_LEN, 0);
 	  
-	  //create delete file
-	  createDeleteFile(socket, filename, buffer);
-	  bzero(buffer, strlen(buffer));
-	  send(socket, &ACK, sizeof(ACK), 0);
-	}
+	        //create delete file
+	        createDeleteFile(socket, filename, buffer);
+	        bzero(buffer, strlen(buffer));
+	        send(socket, &ACK, sizeof(ACK), 0);
+	      }
       }
       bzero(filename,strlen(filename));
     }
     //return back to main interface
     printf("come back!\n");
-    mainUsageServer(socket,buffer,userName,lockInd);
+    mainUsageServer(socket,buffer,userName);
     
     break;
   case '4': //quit the system
     //check if write or delete
-    checkWD(socket, lockInd, userName);
+    checkWD(socket, userName);
     return 1;
     break;
   default:
@@ -487,13 +483,20 @@ void readFile(char* filename, char* buffer){
 }
 
 void showFiles(int socket, char* buffer){
-
+  int shmidLock;
+  shmidLock = shmget(SHM_KEY, MAX_USER*sizeof(struct FILELOCK), 0644|IPC_CREAT);
+  
+  fileLock = shmat(shmidLock, NULL, 0);
+  int curUser = fileLock->curUser;
   for(int i=0;i<curUser;i++) {
     char str[FILE_LEN];
-    sprintf(str,"%d. %s\n", i+1,fileLock[i].filename);
+    char str2[FILE_LEN];
+    strcpy(str2, fileLock->fileLockVec[i].filename);
+    sprintf(str,"%d. %s\n", i+1, str2);
     strcat(buffer,str);
   }
-  
+  shmdt(fileLock);
+
   send(socket,buffer,BUFFER_LEN,0);
   bzero(buffer,BUFFER_LEN);
 }
@@ -501,13 +504,21 @@ void showFiles(int socket, char* buffer){
 
 int findFile(int socket, char* filename, char* fileInfo) {
   int find = -1;
- 
+  
+  int shmidLock;
+  shmidLock = shmget(SHM_KEY, MAX_USER*sizeof(struct FILELOCK), 0644|IPC_CREAT);
+  
+  fileLock = shmat(shmidLock, NULL, 0);
+  int curUser = fileLock->curUser;
+
   for(int i=0;i<curUser;i++){
-    if(strcmp(fileLock[i].filename,filename) == 0){
+    if(strcmp(fileLock->fileLockVec[i].filename,filename) == 0){
       find = 1;
       break;
     }
   }
+
+  shmdt(fileLock);
 
   //send if the file find or not
   printf("find the file or not: %d\n",find);
@@ -776,12 +787,7 @@ void rootSyn(int socket, char* buffer) {
     send(socket, &ACK, sizeof(ACK), 0);
 
     //add the new user to filelock
-    strcpy(fileLock[curUser].filename, userName);
-    strcat(fileLock[curUser].filename,"Data.txt");
-    fileLock[curUser].lock = 0;
-    fileLock[curUser].write = 0;
-    fileLock[curUser].delete = 0;
-    curUser++;
+    addNewUserToSHM(userName);
     
     writeNewUserToFile(userName,password);
     break;
@@ -823,27 +829,27 @@ void getPath() {
   char cwd[PATH_MAX];
   if (getcwd(cwd, sizeof(cwd)) != NULL) {
     //printf("Current working dir: %s\n", cwd);
-   } else {
-       perror("getcwd() error");
-       return;
-   }
+  } else {
+    perror("getcwd() error");
+    return;
+  }
 
-   //delete last three elements(src) in path
-   int count = 0;
-   while(cwd[count] != '\0'){
-     count++;
-   }
+  //delete last three elements(src) in path
+  int count = 0;
+  while(cwd[count] != '\0'){
+    count++;
+  }
 
-   for(int i=0;i<SRC_LEN;i++){
-     cwd[count--] = '\0';
-   }
+  for(int i=0;i<SRC_LEN;i++){
+    cwd[count--] = '\0';
+  }
 
-   strcpy(ACCOUNT_PATH,cwd);
-   strcat(ACCOUNT_PATH,"data/userAccount/userInfo.txt");
-   strcpy(DATA_PATH,cwd);
-   strcat(DATA_PATH,"data/userData/");
+  strcpy(ACCOUNT_PATH,cwd);
+  strcat(ACCOUNT_PATH,"data/userAccount/userInfo.txt");
+  strcpy(DATA_PATH,cwd);
+  strcat(DATA_PATH,"data/userData/");
 
-   return; 
+  return; 
 }
 
 int checkPermission(char* filename, char* username) {
@@ -870,48 +876,70 @@ void setFileLock() {
     exit(1);
   }
 
+  int userNum = 0;
   // for readdir()
   while ((de = readdir(dr)) != NULL) {
     if(strcmp(de->d_name,"..") == 0 || strcmp(de->d_name,".")==0) continue;
     
-    strcpy(fileLock[curUser].filename,de->d_name);
-    fileLock[curUser].lock = 0;
-    fileLock[curUser].write = 0;
-    fileLock[curUser].delete = 0;
-    curUser++;
+    strcpy(fileLock->fileLockVec[userNum].filename,de->d_name);
+    fileLock->fileLockVec[userNum].lock = 0;
+    fileLock->fileLockVec[userNum].write = 0;
+    fileLock->fileLockVec[userNum].del = 0;
+    userNum++;
   }
+  fileLock->curUser = userNum;
 
   closedir(dr);
 
   return;
 }
 
-int getCurLockInd(char* username) {
-  char curFileName[FILE_LEN];
-  strcpy(curFileName,username);
-  strcat(curFileName,"Data.txt");
-  int ind = getCurLockIndByFileName(curFileName);
-  return ind;
-}
+int getCurLockByFileName(char* filename) {
+  int shmidLock;
+  shmidLock = shmget(SHM_KEY, MAX_USER*sizeof(struct FILELOCK), 0644|IPC_CREAT);
+  
+  fileLock = shmat(shmidLock, NULL, 0);
+  int curUser = fileLock->curUser;
 
-int getCurLockIndByFileName(char* filename) {
   for (int i=0;i<curUser;i++) {
-    if (strcmp(fileLock[i].filename,filename) == 0) {
-      return i;
+    if (strcmp(fileLock->fileLockVec[i].filename,filename) == 0) {
+      int lock = fileLock->fileLockVec[i].lock;
+      shmdt(fileLock);
+      return lock;
     }
   }
+
   printf("error user!\n");
   exit(1);  
+
 }
 
-void checkWD(int socket, int lockInd, char* username) {
-  if (fileLock[lockInd].write == 1) {
-    char filename[FILE_LEN];
-    strcpy(filename,username);
-    strcat(filename,"Data.txt");
+void checkWD(int socket, char* username) {
 
-    //int pid = fork();
-    //if (pid != 0) {
+  //get the filename
+  char filename[FILE_LEN];
+  strcpy(filename,username);
+  strcat(filename,"Data.txt");
+
+  //get the write and delete lock
+  int writeLock;
+  int delLock;
+  int shmidLock;
+  shmidLock = shmget(SHM_KEY, MAX_USER*sizeof(struct FILELOCK), 0644|IPC_CREAT);
+  
+  fileLock = shmat(shmidLock, NULL, 0);
+  int curUser = fileLock->curUser;
+  int ind;
+  for (int i=0;i<curUser;i++) {
+    if (strcmp(fileLock->fileLockVec[i].filename,filename) == 0) {
+      ind = i;
+      writeLock = fileLock->fileLockVec[i].write;
+      delLock = fileLock->fileLockVec[i].del;
+    }
+  }
+  
+
+  if (writeLock == 1) {
     //  close(socket);
     printf("filename in checkWD:%s\n",filename);
     sendWriteFile(anotherIP,filename);
@@ -922,14 +950,7 @@ void checkWD(int socket, int lockInd, char* username) {
     combineWriteFile(filename);
   }
 
-  if (fileLock[lockInd].delete == 1) {
-    char filename[FILE_LEN];
-    strcpy(filename,username);
-    strcat(filename,"Data.txt");
-
-    // int pid = fork();
-    //if (pid != 0) {
-    //close(socket);
+  if (delLock == 1) {
     sendDeleteFile(anotherIP,filename);
     //exit(1);
     //}
@@ -941,10 +962,10 @@ void checkWD(int socket, int lockInd, char* username) {
 
 
   //unlock the file
-  fileLock[lockInd].lock = 0;
-  fileLock[lockInd].write = 0;
-  fileLock[lockInd].delete = 0;
-  fileRLock[lockInd] = 0; 
+  fileLock->fileLockVec[ind].lock = 0;
+  fileLock->fileLockVec[ind].write = 0;
+  fileLock->fileLockVec[ind].del = 0;
+  shmdt(fileLock);
 }
 
 int sendWriteFile(char* IP, char* filename) {
@@ -1147,4 +1168,57 @@ int sendDeleteFile(char* IP, char* filename) {
   }
   close(clientSocket);
   return 1;
+}
+
+
+void addNewUserToSHM(char* userName) {
+  int shmidLock;
+  shmidLock = shmget(SHM_KEY, MAX_USER*sizeof(struct FILELOCK), 0644|IPC_CREAT);
+
+  fileLock = shmat(shmidLock, NULL, 0);
+
+  int userInd = fileLock->curUser;
+	//add the new user to filelock
+	strcpy(fileLock->fileLockVec[userInd].filename, userName);
+	strcat(fileLock->fileLockVec[userInd].filename,"Data.txt");
+	fileLock->fileLockVec[userInd].lock = 0;
+	fileLock->fileLockVec[userInd].write = 0;
+	fileLock->fileLockVec[userInd].del = 0;
+	userInd++;
+  fileLock->curUser = userInd;
+  shmdt(fileLock);
+}
+
+void lockWSHM(char* filename) {
+  int shmidLock;
+  shmidLock = shmget(SHM_KEY, MAX_USER*sizeof(struct FILELOCK), 0644|IPC_CREAT);
+  
+  fileLock = shmat(shmidLock, NULL, 0);
+  int curUser = fileLock->curUser;
+
+  for (int i=0;i<curUser;i++) {
+    if (strcmp(fileLock->fileLockVec[i].filename,filename) == 0) {
+      fileLock->fileLockVec[i].lock = 1;
+      fileLock->fileLockVec[i].write = 1;
+      shmdt(fileLock);
+      return;
+    }
+  }
+}
+
+void lockDSHM(char* filename) {
+  int shmidLock;
+  shmidLock = shmget(SHM_KEY, MAX_USER*sizeof(struct FILELOCK), 0644|IPC_CREAT);
+  
+  fileLock = shmat(shmidLock, NULL, 0);
+  int curUser = fileLock->curUser;
+
+  for (int i=0;i<curUser;i++) {
+    if (strcmp(fileLock->fileLockVec[i].filename,filename) == 0) {
+      fileLock->fileLockVec[i].lock = 1;
+      fileLock->fileLockVec[i].del = 1;
+      shmdt(fileLock);
+      return;
+    }
+  }
 }
